@@ -1,3 +1,7 @@
 torch 
 numpy
 wandb
+ale-py
+gymnasium
+pygame
+opencv-python

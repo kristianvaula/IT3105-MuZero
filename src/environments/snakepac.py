@@ -1,0 +1,94 @@
+import gymnasium as gym
+import numpy as np
+
+class SnakePacEnv(gym.Env):
+  metadata = {"render.modes": ["human"]}
+
+  def __init__(self):
+    super(SnakePacEnv, self).__init__()
+    self.world_length = 10
+    
+    # Two actions: 0 = left, 1 = right.
+    self.action_space = gym.spaces.Discrete(2)
+    
+    # Observation: one-dimensional array of length 10.
+    # We'll use 0 for empty, 1 for the agent, and 2 for the coin.
+    self.observation_space = gym.spaces.Box(low=0, high=2, shape=(self.world_length,), dtype=np.int32)
+    
+    self.user_pos = None
+    self.coin_pos = None
+    self.reset()
+
+  def reset(self, seed=None, options=None):
+    # Optionally set the seed.
+    if seed is not None:
+      np.random.seed(seed)
+    
+    # Spawn the user at a random position.
+    self.user_pos = np.random.randint(0, self.world_length)
+    
+    # Spawn the coin in a different random position.
+    self.coin_pos = np.random.randint(0, self.world_length)
+    while self.coin_pos == self.user_pos:
+      self.coin_pos = np.random.randint(0, self.world_length)
+    
+    # Gymnasium reset returns (observation, info).
+    return self._get_obs(), {}
+
+  def step(self, action):
+    # Validate action (0: left, 1: right).
+    if action not in [0, 1]:
+      raise ValueError("Invalid Action. Action must be 0 (left) or 1 (right).")
+    
+    # Move the user.
+    if action == 0:
+      self.user_pos = max(0, self.user_pos - 1)
+    elif action == 1:
+      self.user_pos = min(self.world_length - 1, self.user_pos + 1)
+    
+    reward = 0
+    done = False  # This environment is endless.
+    
+    # Check if the user lands on the coin.
+    if self.user_pos == self.coin_pos:
+      reward = 1
+      # Respawn the coin at a new location (ensuring it's not on the user).
+      new_coin_pos = np.random.randint(0, self.world_length)
+      while new_coin_pos == self.user_pos:
+          new_coin_pos = np.random.randint(0, self.world_length)
+      self.coin_pos = new_coin_pos
+  
+    info = {}
+    # Gymnasium's step should return: observation, reward, terminated, truncated, info.
+    return self._get_obs(), reward, done, False, info
+
+  def render(self, mode="human"):
+    # Create a simple string representation of the world.
+    world = np.full(self.world_length, " . ")
+    world[self.user_pos] = " U "
+    world[self.coin_pos] = " C "
+    print("".join(world))
+
+  def _get_obs(self):
+    # Observation represented as a numpy array:
+    # 0 means empty, 1 means user, 2 means coin.
+    obs = np.zeros(self.world_length, dtype=np.int32)
+    obs[self.user_pos] = 1
+    obs[self.coin_pos] = 2
+    return obs
+
+  def close(self):
+    pass
+
+# Example usage:
+if __name__ == "__main__":
+  env = SnakePacEnv()
+  obs, _ = env.reset()
+  print("Initial state:")
+  env.render()
+  
+  # Example step: move right.
+  obs, reward, done, truncated, info = env.step(1)
+  print("\nAfter taking action 'right':")
+  env.render()
+  print("Reward:", reward)
