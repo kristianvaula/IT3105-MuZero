@@ -1,12 +1,13 @@
 import gymnasium as gym
 import numpy as np
+from src.config import Config
 
 class SnakePacEnv(gym.Env):
   metadata = {"render.modes": ["human"]}
 
-  def __init__(self):
+  def __init__(self, world_length=10, seed=None):
     super(SnakePacEnv, self).__init__()
-    self.world_length = 10
+    self.world_length = world_length
     
     # Two actions: 0 = left, 1 = right.
     self.action_space = gym.spaces.Discrete(2)
@@ -17,22 +18,28 @@ class SnakePacEnv(gym.Env):
     
     self.user_pos = None
     self.coin_pos = None
+    
+    self.seed(seed)
+    
     self.reset()
+
+  def seed(self, seed=None):
+    self.np_random, _ = gym.utils.seeding.np_random(seed)
+    self.internal_Seed = seed
 
   def reset(self, seed=None, options=None):
     # Optionally set the seed.
     if seed is not None:
-      np.random.seed(seed)
+      self.seed(seed)
     
     # Spawn the user at a random position.
-    self.user_pos = np.random.randint(0, self.world_length)
+    self.user_pos = self.np_random.integers(0, self.world_length)
     
     # Spawn the coin in a different random position.
-    self.coin_pos = np.random.randint(0, self.world_length)
+    self.coin_pos = self.np_random.integers(0, self.world_length)
     while self.coin_pos == self.user_pos:
-      self.coin_pos = np.random.randint(0, self.world_length)
-    
-    # Gymnasium reset returns (observation, info).
+      self.coin_pos = self.np_random.integers(0, self.world_length)
+
     return self._get_obs(), {}
 
   def step(self, action):
@@ -52,12 +59,12 @@ class SnakePacEnv(gym.Env):
     # Check if the user lands on the coin.
     if self.user_pos == self.coin_pos:
       reward = 1
-      # Respawn the coin at a new location (ensuring it's not on the user).
-      new_coin_pos = np.random.randint(0, self.world_length)
+      # Respawn the coin at a new location.
+      new_coin_pos = self.np_random.integers(0, self.world_length)
       while new_coin_pos == self.user_pos:
-          new_coin_pos = np.random.randint(0, self.world_length)
+        new_coin_pos = self.np_random.integers(0, self.world_length)
       self.coin_pos = new_coin_pos
-  
+
     info = {}
     # Gymnasium's step should return: observation, reward, terminated, truncated, info.
     return self._get_obs(), reward, done, False, info
@@ -82,7 +89,8 @@ class SnakePacEnv(gym.Env):
 
 # Example usage:
 if __name__ == "__main__":
-  env = SnakePacEnv()
+  config = Config()
+  env = SnakePacEnv(config.environment.world_length, config.environment.seed)
   obs, _ = env.reset()
   print("Initial state:")
   env.render()
