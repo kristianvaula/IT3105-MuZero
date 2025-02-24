@@ -1,7 +1,8 @@
-torch 
+torch==2.6.0
 numpy
 wandb
 ale-py
 gymnasium
 pygame
 opencv-python
+PyYAML
