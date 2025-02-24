@@ -1,0 +1,11 @@
+training:
+  environment: 'snakepac' # 'snakepac' or other when implemented
+  logging: True
+
+snakepac:
+  world_length: 10
+  seed: 42
+
+mcts:
+
+logging:
