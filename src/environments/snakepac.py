@@ -1,12 +1,13 @@
 import gymnasium as gym
 import numpy as np
+from src.config import Config
 
 class SnakePacEnv(gym.Env):
   metadata = {"render.modes": ["human"]}
 
   def __init__(self, world_length=10, seed=None):
     super(SnakePacEnv, self).__init__()
-    self.world_length = 10
+    self.world_length = world_length
     
     # Two actions: 0 = left, 1 = right.
     self.action_space = gym.spaces.Discrete(2)
@@ -88,7 +89,8 @@ class SnakePacEnv(gym.Env):
 
 # Example usage:
 if __name__ == "__main__":
-  env = SnakePacEnv()
+  config = Config()
+  env = SnakePacEnv(config.environment.world_length, config.environment.seed)
   obs, _ = env.reset()
   print("Initial state:")
   env.render()
