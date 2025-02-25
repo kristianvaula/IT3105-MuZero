@@ -92,7 +92,7 @@ class uMCTS:
     while node.parent is not None:
       node = node.parent
       depth += 1
-    return
+    return depth
   
   def expand(self, node: Node): 
     """
