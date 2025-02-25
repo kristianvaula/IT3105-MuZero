@@ -7,6 +7,10 @@ snakepac:
   seed: 42
 
 mcts:
+  num_simulations: 100
+  max_depth: 10
+  ucb_constant: 1.0
+  discount_factor: 0.95
 
 logging:
 
