@@ -14,8 +14,10 @@ class NeuralNetwork():
           - Required parameters (e.g., in_features, out_features).
           - Optional "activation": Activation function name (e.g., "relu").
         """
+        self.layer_configs = layer_configs
         self.network = NetworkBuilder(layer_configs).build_network() if build else None
         self.device = device
+
         if self.network is not None:
             self.network.to(device)
         
@@ -30,29 +32,48 @@ class NeuralNetwork():
             model_name (str): Name of the model file, with type.
             dir (str): Directory to save the model.
         """
+        if self.network is None:
+            raise ValueError("Model has not been initialized. Cannot save.")
+
         subdir = str(subdir)
         dir_path = f"{dir}/{subdir}"
         os.makedirs(dir_path, exist_ok=True)
-        
+
         model_path = f"{dir_path}/{model_name}"
         torch.save(self.network.state_dict(), model_path)
-        
+            
         
     def load_model(self, iteration=None, model_name="representation_model.pth", dir="models"):
         """
         Load the model from a directory.
         """
-        subdirs = os.listdir(dir)
-        if iteration is None:
-            subdir = max([int(subdir) for subdir in subdirs])
-            subdir = str(iteration)
-        else:
-            subdir = subdirs[iteration]
+        try:
+            subdirs = os.listdir(dir)
+            if not subdirs:
+                raise FileNotFoundError("No models found in directory.")
 
-        model_path = f"{dir}/{subdir}/{model_name}"
-        model = torch.load(model_path)
-        
-        self.network = model
+            if iteration is None:
+                subdir = str(max(int(s) for s in subdirs))
+            else:
+                subdir = str(iteration)
+
+            model_path = os.path.join(dir, subdir, model_name)
+            
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"Model file {model_path} not found.")
+            
+            if self.network is None:
+                print("Rebuilding the network before loading weights...")
+                self.network = NetworkBuilder(self.layer_configs).build_network()
+                self.network.to(self.device)
+
+            self.network.load_state_dict(torch.load(model_path), strict=False)
+            self.network.to(self.device)  
+            print(f"Model loaded from {model_path}")
+
+        except Exception as e:
+            print(f"Error loading model: {e}")
+
             
     def preprocess(self, x):
         return x
