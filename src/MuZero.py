@@ -25,6 +25,7 @@ class MuZero:
         # TODO
         build = config.networks.iteration is None
         if build:
+            # TODO: Add method for calculating input layer
             representation_network = NeuralNetwork(config.networks.representation, device="cuda", build=build)
             dynamics_network = NeuralNetwork(config.networks.dynamics, device="cuda", build=build)
             prediction_network = NeuralNetwork(config.networks.prediction, device="cuda", build=build)

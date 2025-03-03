@@ -7,9 +7,11 @@ class NeuralNetManager():
         self.prediction = prediction
     
     def NNr(self):
+        # TODO implement method with in/out
         pass
     
     def NNd(self):
+        # TODO implement method with in/out
         pass
     
     def NNp(self, state):

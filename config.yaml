@@ -13,6 +13,38 @@ snakepac:
     max_depth: 8
     ucb_constant: 1.0
     discount_factor: 0.95
+  
+  network:
+    iteration: ""
+    state_window: 4
+    representation:
+    - type: linear
+      in_features: "" # Will be set by the environment
+      out_features: "dont know yet"
+      activation: relu
+    - type: linear
+      in_features: 128
+      out_features: 64
+
+    prediction:
+      - type: linear
+        in_features: 64
+        out_features: 64
+        activation: relu
+      - type: linear
+        in_features: 64
+        out_features: 10
+
+    dynamics:
+      - type: linear
+        in_features: 68
+        out_features: 128
+        activation: relu
+      - type: linear
+        in_features: 128
+        out_features: 64
+
+  
 
 riverraid:
   num_episodes: 100
@@ -31,11 +63,12 @@ riverraid:
 logging:
 
 network:
+  # for snakepac
   iteration: ""
   representation:
   - type: linear
-    in_features: 64
-    out_features: 128
+    in_features: "" # Will be set by the environment
+    out_features: 
     activation: relu
   - type: linear
     in_features: 128

@@ -25,6 +25,7 @@ class SnakePacConfig:
   world_length: int
   seed: int
   uMCTS: uMCTSConfig
+  network: NetworkConfig
   
 class Config():
   def __init__(self, config_file: str = "config.yaml"):
