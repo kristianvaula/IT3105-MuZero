@@ -3,6 +3,13 @@ from pathlib import Path
 from dataclasses import dataclass
 
 @dataclass
+class NetworkConfig:
+  iteration: int
+  representation: list
+  dynamics: list
+  prediction: list
+
+@dataclass
 class uMCTSConfig:
   num_searches: int
   max_depth: int
@@ -25,6 +32,7 @@ class Config():
     
     self.environment_name = self.__config_data["environment"]
     self.logging = self.__config_data["logging"]
+    self.networks = NetworkConfig(**self.__config_data["network"])
     
     if self.environment_name == "snakepac":
       self.environment = SnakePacConfig(**self.__config_data["snakepac"])
