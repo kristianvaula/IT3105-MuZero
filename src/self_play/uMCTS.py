@@ -18,13 +18,13 @@ class uMCTS:
   """
   Monte Carlo Tree Search in the abstract state space.
   """
-  def __init__(self, nnm, gsm: GameStateManager,action_space, num_simulations, 
+  def __init__(self, nnm, gsm: GameStateManager, action_space, num_searches, 
                max_depth, ucb_constant, discount_factor):
     self.nnm = nnm
     self.gsm = gsm
     self.action_space = action_space
     
-    self.num_simulations = num_simulations
+    self.num_searches = num_searches
     self.max_depth = max_depth
     self.ucb_constant = ucb_constant
     self.discount_factor = discount_factor
@@ -35,20 +35,20 @@ class uMCTS:
     """
     root = Node(root_state)
     
-    for _ in range(self.num_simulations):
+    for _ in range(self.num_searches):
       node = root
       # -------------------------------
       # TREE POLICY: Traverse from root to a leaf
       # -------------------------------
-      while not self.is_leaf(node):
-        node = self.select_child(node)
+      while not self.__is_leaf(node):
+        node = self.__select_child(node)
     
       # -------------------------------
       # EXPANSION: If we haven't reached max depth, expand the leaf node
       # (u-MCTS always expands up to a fixed maximum depth)
       # -------------------------------
-      if self.depth(node) < self.max_depth:
-        self.expand(node)
+      if self.__depth(node) < self.max_depth:
+        self.__expand(node)
         
       # For rollout, if the node has children, pick one at random; else use the node itself
       rollout_node = random.choice(list(node.children.values())) if node.children else node
@@ -56,24 +56,24 @@ class uMCTS:
       # -------------------------------
       # ROLLOUT: Simulate actions from rollout_node for the remaining depth using NNd and NNp
       # -------------------------------
-      accum_reward = self.rollout(rollout_node, self.max_depth - self.depth(rollout_node))
+      accum_reward = self.__rollout(rollout_node, self.max_depth - self.__depth(rollout_node))
       
       # -------------------------------
       # BACKPROPAGATION: Update Q-values and visit counts along the path
       # -------------------------------
-      self.backpropagate(rollout_node, accum_reward)
+      self.__backpropagate(rollout_node, accum_reward)
       
     # After simulations, compute the probability distribution over actions 
-    policy = self.compute_policy(root)
+    policy = self.__compute_policy(root)
     
     _, root_value = self.nnm.NNp(root.state)
     return policy, root_value
   
-  def is_leaf(self, node: Node):
+  def __is_leaf(self, node: Node):
     """Check if the node has children to determine if it is a leaf node"""
     return len(node.children) == 0
   
-  def select_child(self, node: Node):
+  def __select_child(self, node: Node):
     """ Select a child node using an UCB policy. """
     best_score = -float('inf')
     best_child = None
@@ -86,7 +86,7 @@ class uMCTS:
         best_child = child
     return best_child
   
-  def depth(self, node: Node):
+  def __depth(self, node: Node):
     """Compute the depth of the node in the tree."""
     depth = 0
     while node.parent is not None:
@@ -94,7 +94,7 @@ class uMCTS:
       depth += 1
     return depth
   
-  def expand(self, node: Node): 
+  def __expand(self, node: Node): 
     """
     Expand the given node by generating one child for each possible action.
     For the root node, legal actions can be obtained vis GSM. 
@@ -112,7 +112,7 @@ class uMCTS:
         child_node.reward = predicted_reward
         node.children[action] = child_node
   
-  def rollout(self, node: Node, remaining_depth):
+  def __rollout(self, node: Node, remaining_depth):
     """
     Perform a rollout from the given node for a fixed depth.
     At each step, use the prediction network (NNp) to obtain a policy and value.
@@ -123,7 +123,7 @@ class uMCTS:
     current_state = node.state
     for d in range(remaining_depth):
       policy, _ = self.nnm.NNp(current_state)
-      action = self.sample_action(policy)
+      action = self.__sample_action(policy)
       
       next_state, reward = self.nnm.NNd(current_state, action)
       accum_reward += discount * reward
@@ -134,7 +134,7 @@ class uMCTS:
     accum_reward += discount * final_value
     return accum_reward
       
-  def sample_action(self, policy):
+  def __sample_action(self, policy):
     """
     Sample an action from a probability distribution.
     """
@@ -142,7 +142,7 @@ class uMCTS:
     probabilities = list(policy.values())
     return random.choices(actions, weights=probabilities, k=1)[0]
   
-  def backpropagate(self, node: Node, accum_reward):
+  def __backpropagate(self, node: Node, accum_reward):
     """
     Backpropagate the rollout reward up the tree, updating visit counts and Q-values.
     """
@@ -151,7 +151,7 @@ class uMCTS:
       node.q_value = (node.q_value * (node.visit_count - 1) + accum_reward) / node.visit_count
       node = node.parent
   
-  def compute_policy(self, root: Node):
+  def __compute_policy(self, root: Node):
     """
     Compute a probability distribution over actions based on the visit 
     counts of the root's children.
