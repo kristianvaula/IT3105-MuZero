@@ -18,7 +18,7 @@ class uMCTS:
   """
   Monte Carlo Tree Search in the abstract state space.
   """
-  def __init__(self, nnm, gsm: GameStateManager,action_space, num_simulations, 
+  def __init__(self, nnm, gsm: GameStateManager, action_space, num_simulations, 
                max_depth, ucb_constant, discount_factor):
     self.nnm = nnm
     self.gsm = gsm
