@@ -5,17 +5,30 @@ import os
 import pickle
 
 class EpisodeBuffer:
-  def __init__(self):
-    self.episodes = []
+    def __init__(self):
+        self.episodes = []  # List of episodes, each episode is a list of steps
     
-  def add_episode(self, episode): 
-    self.episodes.append(episode)
-    
-  def sample_episodes(self, num_episodes):
-    return random.sample(self.episodes, num_episodes)
+    def add_episode(self, episode):
+        """ Adds a new episode (list of steps) to the buffer """
+        self.episodes.append(episode)
+
+    def sample_state(self, q=0):
+        """ 
+        Randomly selects an episode and a state within that episode.
+        Returns a sequence of q+1 states ending at the selected state (for BPTT).
+        """
+        if not self.episodes:
+            raise ValueError("No episodes in the buffer.")
+
+        episode = random.choice(self.episodes)
+        max_index = len(episode) - 1
+        
+        if max_index < q:
+            raise ValueError(f"Episode length ({max_index}) is less than q ({q}).")
+        
+        k = random.randint(q, max_index) # Choose random state ensuring enough look-back
+        return episode[k - q:k + 1] # Return {sb, k-q, ..., sb, k}
   
-
-
 class EpisodeHistory:
   def __init__(self, save_dir="episode_data"):
     self.history = [] #Stores all episodes

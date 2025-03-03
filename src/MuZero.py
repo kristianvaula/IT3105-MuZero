@@ -1,4 +1,5 @@
 from src.config import Config
+from src.storage.episode_buffer import EpisodeBuffer
 
 """ Important parameters 
 
@@ -31,7 +32,7 @@ class MuZero:
         #  config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
 
         # Initialize episode buffer
-        # episode_buffer = 0 # TODO
+        episode_buffer = EpisodeBuffer()
 
         # Initalize reinforcement learning manager (RLM)
         self.rlm = 0  # TODO
