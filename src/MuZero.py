@@ -1,6 +1,7 @@
 from src.config import Config
 from src.storage.episode_buffer import EpisodeBuffer
 from src.self_play.uMCTS import uMCTS
+from src.networks.network_builder import NetworkBuilder
 
 """ Important parameters 
 
@@ -21,7 +22,13 @@ class MuZero:
 
         # Initialize neural networks with configurations
         # TODO
-
+        representation_network = NetworkBuilder(config.networks.representation).build_network()
+        dynamics_network = NetworkBuilder(config.networks.dynamics).build_network()
+        prediction_network = NetworkBuilder(config.networks.prediction).build_network()
+        
+        print(representation_network.state_dict())
+        # print(dynamics_network.state_dict())
+        # print(prediction_network.state_dict())
         # Initialize neural network manager (NNM)
         nnm = 0 # TODO
 
@@ -29,15 +36,15 @@ class MuZero:
         # TODO Maybe remove?
 
         # Intialize u-MCTS module
-        monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
+        self.monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
             config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
 
         # Initialize episode buffer
-        episode_buffer = EpisodeBuffer()
+        self.episode_buffer = EpisodeBuffer()
 
         # Initalize reinforcement learning manager (RLM)
         self.rlm = 0  # TODO
-        return monte_carlo, episode_buffer
+        # return monte_carlo, episode_buffer
 
     def run_training(self):
         pass  # self.rlm.train();
