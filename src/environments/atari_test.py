@@ -1,6 +1,4 @@
 import gymnasium as gym
-import ale_py
-import numpy as np
 
 # Create the River Raid environment
 env = gym.make("ALE/Riverraid-v5", render_mode="human")
