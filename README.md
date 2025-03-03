@@ -1,5 +1,9 @@
 # IT3105-MuZero
 
+## Install Dependencies
+```
+pip install -r requirements.txt
+```
 
 ## 🛠 Code Linting & Formatting Guide
 

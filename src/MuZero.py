@@ -1,4 +1,6 @@
 from src.config import Config
+from src.storage.episode_buffer import EpisodeBuffer
+from src.self_play.uMCTS import uMCTS
 
 """ Important parameters 
 
@@ -15,26 +17,27 @@ I_t: Training interval for the trident network
 class MuZero:
     def __init__(self, config: Config):
         # Load environments and Game State Manager
-        # env, gsm = self.__initialize_env(config)
+        env, gsm = self.__initialize_env(config)
 
         # Initialize neural networks with configurations
         # TODO
 
         # Initialize neural network manager (NNM)
-        # nnm = 0 # TODO
+        nnm = 0 # TODO
 
         # Initialize abstract state manager (ASM) using representation network
         # TODO Maybe remove?
 
         # Intialize u-MCTS module
-        # monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
-        #  config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
+        monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
+            config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
 
         # Initialize episode buffer
-        # episode_buffer = 0 # TODO
+        episode_buffer = EpisodeBuffer()
 
         # Initalize reinforcement learning manager (RLM)
         self.rlm = 0  # TODO
+        return monte_carlo, episode_buffer
 
     def run_training(self):
         pass  # self.rlm.train();
