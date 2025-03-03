@@ -36,6 +36,7 @@ pygame==2.6.1
 pytest==8.3.5
 PyYAML==6.0.2
 requests==2.32.3
+ruff==0.9.9
 sentry-sdk==2.22.0
 setproctitle==1.3.5
 setuptools==75.8.0
