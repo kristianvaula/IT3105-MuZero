@@ -15,6 +15,7 @@ mcts:
 logging:
 
 network:
+  iteration: ""
   representation:
   - type: linear
     in_features: 64
