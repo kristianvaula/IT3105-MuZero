@@ -3,24 +3,34 @@ from pathlib import Path
 from dataclasses import dataclass
 
 @dataclass
-class TrainingConfig:
-  environment: str
-  logging: bool
+class uMCTSConfig:
+  num_searches: int
+  max_depth: int
+  ucb_constant: float
+  discount_factor: float
 
 @dataclass
 class SnakePacConfig:
+  num_episodes: int
+  num_simulations: int
+  I_t: int
+  batch_size: int
   world_length: int
   seed: int
-
-class Config:
+  uMCTS: uMCTSConfig
+  
+class Config():
   def __init__(self, config_file: str = "config.yaml"):
-    self.config_data = self.__load_yaml(config_file)
+    self.__config_data = self.__load_yaml(config_file)
     
-    self.training = TrainingConfig(**self.config_data["training"])
-    if self.training.environment == "snakepac":
-      self.environment = SnakePacConfig(**self.config_data["snakepac"])
+    self.environment_name = self.__config_data["environment"]
+    self.logging = self.__config_data["logging"]
+    
+    if self.environment_name == "snakepac":
+      self.environment = SnakePacConfig(**self.__config_data["snakepac"])
+      self.uMCTS = uMCTSConfig(**self.__config_data["snakepac"]["uMCTS"])
     else: 
-      raise ValueError(f"Invalid environment: {self.training.environment}") # Change when new environments are added
+      raise ValueError(f"Invalid environment: {self.environment}") # Change when new environments are added
     
   @staticmethod
   def __load_yaml(config_file: str):

@@ -122,3 +122,15 @@ class SnakePacGSM(GameStateManager):
       policy[1] = 0.8
       
     return policy
+
+  def is_terminal(self, state):
+    """
+    Check if the given state is terminal.
+    
+    Args:
+      state: State of the environment.
+      
+    Returns:
+      Boolean indicating if the state is terminal.
+    """
+    return self.env.is_terminal(state)
