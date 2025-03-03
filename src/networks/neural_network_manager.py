@@ -1,15 +1,15 @@
-from src.networks.network_builder import NetworkBuilder
+import torch.nn as nn
 
 class NeuralNetManager():
-    def __init__(self, ):
-        self.representation = None
-        self.dynamics = None
-        self.prediction = None
-        
-    def build_networks(self):
-        builder = NetworkBuilder()
+    def __init__(self, representation: nn.Module, dynamics: nn.Module, prediction: nn.Module):
+        self.representation = representation
+        self.dynamics = dynamics
+        self.prediction = prediction
     
-    def NNr():
+    def NNr(self):
+        pass
+    
+    def NNd(self):
         pass
     
     def NNp(self, state):

@@ -1,7 +1,8 @@
 from src.config import Config
 from src.storage.episode_buffer import EpisodeBuffer
 from src.self_play.uMCTS import uMCTS
-from src.networks.network_builder import NetworkBuilder
+from src.networks.network_builder import NeuralNetwork
+from src.networks.neural_network_manager import NeuralNetManager
 
 """ Important parameters 
 
@@ -22,15 +23,22 @@ class MuZero:
 
         # Initialize neural networks with configurations
         # TODO
-        representation_network = NetworkBuilder(config.networks.representation).build_network()
-        dynamics_network = NetworkBuilder(config.networks.dynamics).build_network()
-        prediction_network = NetworkBuilder(config.networks.prediction).build_network()
+        build = config.networks.iteration is None
+        if build:
+            representation_network = NeuralNetwork(config.networks.representation, device="cuda", build=build)
+            dynamics_network = NeuralNetwork(config.networks.dynamics, device="cuda", build=build)
+            prediction_network = NeuralNetwork(config.networks.prediction, device="cuda", build=build)
         
-        print(representation_network.state_dict())
-        # print(dynamics_network.state_dict())
-        # print(prediction_network.state_dict())
+        else:
+            representation_network = NeuralNetwork(config.networks.representation, device="cuda", build=build)
+            dynamics_network = NeuralNetwork(config.networks.dynamics, device="cuda", build=build)
+            prediction_network = NeuralNetwork(config.networks.prediction, device="cuda", build=build)
+            representation_network.load_model(config.networks.iteration, "representation_model.pth")
+            dynamics_network.load_model(config.networks.iteration, "dynamics_model.pth")
+            prediction_network.load_model(config.networks.iteration, "prediction_model.pth")
+            
         # Initialize neural network manager (NNM)
-        nnm = 0 # TODO
+        nnm = NeuralNetManager(representation_network, dynamics_network, prediction_network)
 
         # Initialize abstract state manager (ASM) using representation network
         # TODO Maybe remove?
