@@ -1,16 +1,32 @@
-training:
-  environment: 'snakepac' # 'snakepac' or other when implemented
-  logging: True
+environment: 'snakepac' # 'snakepac' or other when implemented
+logging: True
 
 snakepac:
+  num_episodes: 100
+  num_simulations: 100
+  I_t: 10
+  batch_size: 32
   world_length: 10
   seed: 42
+  uMCTS:
+    num_searches: 20
+    max_depth: 8
+    ucb_constant: 1.0
+    discount_factor: 0.95
 
-mcts:
+riverraid:
+  num_episodes: 100
   num_simulations: 100
-  max_depth: 10
-  ucb_constant: 1.0
-  discount_factor: 0.95
+  training_interval: 10
+  batch_size: 32
+
+  skip_frames: 4
+  action_frames: 4
+  mcts:
+    num_searches: 50
+    max_depth: 10
+    ucb_constant: 1.0
+    discount_factor: 0.95
 
 logging:
 

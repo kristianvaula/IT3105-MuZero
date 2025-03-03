@@ -1,10 +1,10 @@
-from .config import Config
+from src.config import Config
+from src.self_play.uMCTS import uMCTS
 
 """ Important parameters 
 
 num_episodes: Number of episodes to run
 num_simulations: Number of simulations to run in u-MCTS
-max_depth: Maximum depth to expand in u-MCTS
 ucb_constant: UCB constant for u-MCTS
 mbs (Minibatch size): Number of episodes to sample for BPTT
 I_t: Training interval for the trident network
@@ -14,53 +14,41 @@ I_t: Training interval for the trident network
 
 class MuZero: 
   def __init__(self, config: Config):
-    # Load environments 
-  
-    # Load Game State Manager
+    # Load environments and Game State Manager
+    env, gsm = self.__initialize_env(config)
     
     # Initialize neural networks with configurations 
+    # TODO
     
-    # Initialize neural nework manager (NNM)
+    # Initialize neural network manager (NNM)
+    nnm = 0 # TODO
     
     # Initialize abstract state manager (ASM) using representation network 
+    # TODO Maybe remove? 
     
     # Intialize u-MCTS module 
+    monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches, 
+      config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
     
     # Initialize episode buffer 
+    episode_buffer = 0 # TODO
     
     # Initalize reinforcement learning manager (RLM) 
-  
-
-  def train(self):
-    # Initialize episode history 
+    self.rlm = 0 # TODO
     
-    # For episode in range of num_episodes:
-      # Reset the video game to an initial state (s0)
-      
-      # Initialize episode data 
-      
-      # For k in range num_simulations:
-        # Gather q+1 real game states. Fill blank states when k < q. 
-        
-        # Createa a new abstract state (s) using the NNr. 
-      
-        # Perform u-MCTS search starting from the current abstract state (s)
-        
-        # Select an action using the policy returned by u-MCTS search
-        
-        # Take the selected action in the video game and observe the next state (s')
-        
-        # Store the transition (s, a, r, s') in the episode data
-        
-        # If the game has ended, break
-      
-      # Add the episode data to the episode history
-      
-      # If episode modulo I_t == 0:
-        # Back propagation through time (BPTT) using trident, EH, and MBS 
-      
-      # Return network
-      return 0 
+  def run_training(self):
+    pass #self.rlm.train();
+  
+  def __initialize_env(self, config: Config):
+    if config.environment_name == "snakepac":
+      from .environments.snakepac import SnakePacEnv
+      from .gsm.snakepac_gsm import SnakePacGSM
+      env = SnakePacEnv(config.environment.world_length, config.environment.seed)
+      gsm = SnakePacGSM(env)
+    else:
+      raise ValueError(f"Invalid environment: {config.environment}")
+  
+    return env, gsm
 
 def main():
   
@@ -71,7 +59,7 @@ def main():
   muzero = MuZero(config)
  
   # Run training loop 
-  muzero.train()
+  muzero.run_training()
   
 if __name__ == "__main__":
   main()
