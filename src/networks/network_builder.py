@@ -21,7 +21,7 @@ class NetworkBuilder:
                 
         return nn.Sequential(*layers)
 
-    def __build_layer(self, layer_config):
+    def build_layer(self, layer_config):
         """
         Build a layer from a configuration.
         """
