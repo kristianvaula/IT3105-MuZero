@@ -52,7 +52,7 @@ class EpisodeBuffer:
             raise ValueError(f"Episode length ({max_index}) is less than q ({q}).")
         
         k = random.randint(q, max_index) # Choose random state ensuring enough look-back
-        return episode.steps[k - q:k + 1] # Return {sb, k-q, ..., sb, k}
+        return episode.steps[k - q:k + 1] # Return [sb, k-q, ..., sb, k]
       
     def save_history(self):
         """ Saves all episodes to a file. """

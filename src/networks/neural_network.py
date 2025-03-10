@@ -116,6 +116,7 @@ class DynamicsNetwork(NeuralNetwork):
         return self.postprocess(hidden_activation)
     
     def preprocess(self, x, a):
+        # TODO: concat hidden state and action :D
         raise NotImplementedError("Not implemented.")
     
     def postprocess(self, hidden_activation):
