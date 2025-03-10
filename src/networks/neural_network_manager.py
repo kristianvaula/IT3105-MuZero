@@ -104,9 +104,9 @@ class NeuralNetManager():
                     l_b = self.__loss_fn(reward, [target_reward]).to(torch.float32)
                     l_c = self.__policy_loss_fn([target_policy], policy_t)
                 
-                l =  l_a + l_b + l_c       
+                l_loss =  l_a + l_b + l_c       
             
-                loss += self.__scale_gradient(l, gradient_scale)
+                loss += self.__scale_gradient(l_loss, gradient_scale)
                 
         loss /= len(batch)
         

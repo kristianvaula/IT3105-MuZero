@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from src.networks.network_builder import NetworkBuilder
 import os
 
@@ -106,7 +105,7 @@ class DynamicsNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, build=True):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
-        super().__init__(layer_configs, device, build)
+        super().__init__(build_layers, device, build)
         self.state_head = NetworkBuilder.build_layer(head_layers[0])
         self.reward_head = NetworkBuilder.build_layer(head_layers[1])
     
@@ -131,7 +130,7 @@ class PredictionNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, build=True):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
-        super().__init__(layer_configs, device, build)
+        super().__init__(build_layers, device, build)
         self.value_head = NetworkBuilder.build_layer(head_layers[0])
         self.policy_head = NetworkBuilder.build_layer(head_layers[1])
         
