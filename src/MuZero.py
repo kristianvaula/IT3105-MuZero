@@ -1,7 +1,7 @@
 from src.config import Config
 from src.storage.episode_buffer import EpisodeBuffer
 from src.self_play.uMCTS import uMCTS
-from src.networks.network_builder import NeuralNetwork
+from src.networks.neural_network import NeuralNetwork
 from src.networks.neural_network_manager import NeuralNetManager
 from src.rlm import ReinforcementLearningManager
 

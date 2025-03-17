@@ -4,7 +4,9 @@ from dataclasses import dataclass
 
 @dataclass
 class NetworkConfig:
-  iteration: int
+  iteration: str
+  state_window: int
+  hidden_state_size: int
   representation: list
   dynamics: list
   prediction: list
@@ -19,11 +21,14 @@ class uMCTSConfig:
 @dataclass
 class SnakePacConfig:
   num_episodes: int
+  num_episode_step: int
+  training_interval: int
   num_simulations: int
   I_t: int
   batch_size: int
   world_length: int
   seed: int
+  action_space: int
   uMCTS: uMCTSConfig
   network: NetworkConfig
   
@@ -33,11 +38,11 @@ class Config():
     
     self.environment_name = self.__config_data["environment"]
     self.logging = self.__config_data["logging"]
-    self.networks = NetworkConfig(**self.__config_data["network"])
-    
+
     if self.environment_name == "snakepac":
       self.environment = SnakePacConfig(**self.__config_data["snakepac"])
       self.uMCTS = uMCTSConfig(**self.__config_data["snakepac"]["uMCTS"])
+      self.networks = NetworkConfig(**self.__config_data["snakepac"]["network"])
     else: 
       raise ValueError(f"Invalid environment: {self.environment}") # Change when new environments are added
     

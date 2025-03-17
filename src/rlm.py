@@ -30,10 +30,10 @@ class ReinforcementLearningManager():
     self.config = config
 
     self.num_episodes = config.environment.num_episodes             # Ne: total number of episodes
-    self.num_episode_steps = config.environment.num_episode_steps       # Nes: max steps per episode
+    self.num_episode_steps = config.environment.num_episode_step       # Nes: max steps per episode
     self.training_interval = config.environment.training_interval     # It: training update interval
     self.minibatch_size = config.environment.batch_size           # mbs: minibatch size for BPTT
-    self.history_length = config.environment.network.state_window          # q: number of past states required for φₖ
+    self.history_length = config.networks.state_window          # q: number of past states required for φₖ
     
   def train(self):
     """
@@ -93,7 +93,7 @@ class ReinforcementLearningManager():
     """
     Returns the history of states ϕₖ.
     """
-    if self.config.environment == "snakepac":
+    if self.config.environment_name == "snakepac":
       state_window = self.history_length       
       state_tensor = torch.tensor(state_history[:-state_window], dtype=torch.float32)
       action_tensor = torch.tensor(action_history[:-state_window], dtype=torch.float32)
