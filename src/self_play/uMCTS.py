@@ -3,6 +3,7 @@
 # – Uses the ASM and NNM to expand nodes, perform rollouts, and backpropagate value estimates.
 import math
 import random
+import torch
 from typing import Dict
 from src.gsm.gsm import GameStateManager
 
@@ -121,7 +122,7 @@ class uMCTS:
         if node.parent is None:
             actions = self.gsm.get_legal_actions(node.state)
         else:
-            actions = self.action_space
+            actions = self.action_space.n
 
         for action in actions:
             if action not in node.children:
@@ -156,9 +157,8 @@ class uMCTS:
         """
         Sample an action from a probability distribution.
         """
-        actions = list(policy.keys())
-        probabilities = list(policy.values())
-        return random.choices(actions, weights=probabilities, k=1)[0]
+        print(policy)
+        return torch.multinomial(policy, num_samples=1).item()
 
     def __backpropagate(self, node: Node, accum_reward):
         """

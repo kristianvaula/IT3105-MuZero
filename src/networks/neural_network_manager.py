@@ -19,14 +19,17 @@ class NeuralNetManager:
         self.learning_rate = learning_rate
         self.training_steps = 0
 
-    def NNr(self):
-        # TODO implement method with in/out
-        pass
+    def NNr(self, input):
+        return self.representation(input)
 
-    def NNd(self):
-        # TODO implement method with in/out
-        pass
-
+    def NNd(self, state, action):
+        # check if first layer is linear
+        if isinstance(self.dynamics.network[0], nn.Linear):
+            action = torch.tensor([action], dtype=torch.float32)
+            return self.dynamics(torch.cat((state, action), dim=0))
+        else:
+            raise NotImplementedError("woopsies, ahead of your time")
+    
     def NNp(self, state):
         return self.prediction(state)
 
@@ -43,7 +46,7 @@ class NeuralNetManager:
         # Only translate, so reward is 0 (tensor)
         reward = torch.tensor(0, dtype=torch.float32)
 
-        policy_p = policy[0]
+        policy_p = policy
 
         return hidden_state, value, reward, [p for p in policy_p], policy
 

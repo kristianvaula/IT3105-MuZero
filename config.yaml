@@ -10,7 +10,7 @@ snakepac:
   batch_size: 32
   world_length: 10
   seed: 42
-  action_space: &action_size_snakepac 2
+  action_space: &action_size_snakepac 3
   uMCTS:
     num_searches: 20
     max_depth: 8
@@ -52,7 +52,7 @@ snakepac:
 
     dynamics:
       - type: linear
-        in_features: 68
+        in_features: 17 # &hidden_size_snakepac + 1 (action)
         out_features: 128
         activation: relu
       - type: linear

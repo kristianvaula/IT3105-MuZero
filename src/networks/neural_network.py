@@ -4,7 +4,7 @@ import os
 
 
 class NeuralNetwork:
-    def __init__(self, layer_configs, device, build=True):
+    def __init__(self, layer_configs, device, build=True, iteration=None):
         """
         Build a network from layer configurations.
         Each configuration is a dict that includes:
@@ -13,14 +13,14 @@ class NeuralNetwork:
           - Optional "activation": Activation function name (e.g., "relu").
         """
         self.layer_configs = layer_configs
-        self.network = NetworkBuilder(layer_configs).build_network() if build else None
+        self.network = NetworkBuilder(layer_configs).build_network()
         self.device = device
 
         if self.network is not None:
             self.network.to(device)
 
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, x, **kwargs):
         raise NotImplementedError("Subclasses must implement this method.")
         
         
@@ -95,7 +95,7 @@ class RepresentationNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, build=True):
         super().__init__(layer_configs, device, build)
     
-    def __call__(self, x):
+    def __call__(self, x, **kwargs):
         x = self.preprocess(x)
         hidden_activation = self.forward(x)
         return self.postprocess(hidden_activation)
@@ -106,17 +106,16 @@ class DynamicsNetwork(NeuralNetwork):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
-        self.state_head = NetworkBuilder.build_layer(head_layers[0])
-        self.reward_head = NetworkBuilder.build_layer(head_layers[1])
+        self.state_head = NetworkBuilder(head_layers).build_layer(head_layers[0])
+        self.reward_head = NetworkBuilder(head_layers).build_layer(head_layers[1])
     
-    def __call__(self, x, a):
-        input = self.preprocess(x, a)
+    def __call__(self, x, **kwargs):
+        input = self.preprocess(x)
         hidden_activation = self.forward(input)
         return self.postprocess(hidden_activation)
     
-    def preprocess(self, x, a):
-        # TODO: concat hidden state and action :D
-        raise NotImplementedError("Not implemented.")
+    def preprocess(self, x, **kwargs):
+        return x
     
     def postprocess(self, hidden_activation):
         # Return new hidden state and reward
@@ -131,8 +130,8 @@ class PredictionNetwork(NeuralNetwork):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
-        self.value_head = NetworkBuilder.build_layer(head_layers[0])
-        self.policy_head = NetworkBuilder.build_layer(head_layers[1])
+        self.policy_head = NetworkBuilder(head_layers).build_layer(head_layers[0])
+        self.value_head = NetworkBuilder(head_layers).build_layer(head_layers[1])
         
     def __call__(self, x):
         input = self.preprocess(x)

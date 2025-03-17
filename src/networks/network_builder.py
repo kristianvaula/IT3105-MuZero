@@ -11,7 +11,7 @@ class NetworkBuilder:
         """
         layers = []
         for layer_config in self.layer_configs:
-            layer = self.__build_layer(layer_config)
+            layer = self.build_layer(layer_config)
             layers.append(layer)
 
             activation = layer_config.get("activation", None)
