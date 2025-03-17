@@ -8,11 +8,65 @@ snakepac:
   batch_size: 32
   world_length: 10
   seed: 42
+  action_space: 2
   uMCTS:
     num_searches: 20
     max_depth: 8
     ucb_constant: 1.0
     discount_factor: 0.95
+  
+  network:
+    iteration: ""
+    state_window: 4
+    hidden_state_size: 16
+    representation:
+    - type: linear
+      in_features: 44 # World length * window size + 4 (corresponding actions)
+      out_features: 128
+      activation: relu
+    - type: linear
+      in_features: 128
+      out_features: 64
+    - type: linear
+      in_features: 64
+      out_features: ${{snakepac.network.hidden_state_size}}
+
+    prediction:
+      - type: linear
+        in_features: ${{snakepac.network.hidden_state_size}}
+        out_features: 64
+        activation: relu
+      - type: linear
+        in_features: 64
+        out_features: 32
+      # second to last layer is the policy layer
+      - type: linear
+        in_features: 32
+        out_features: ${{snakepac.action_space}}
+      # last layer is the value layer
+      - type: linear
+        in_features: 32
+        out_features: 1
+
+    dynamics:
+      - type: linear
+        in_features: 68
+        out_features: 128
+        activation: relu
+      - type: linear
+        in_features: 128
+        out_features: 64
+      # second to last layer is the hidden state layer
+      - type: linear
+        in_features: 64
+        out_features: ${{snakepac.network.hidden_state_size}}
+      # last layer is the reward layer
+      - type: linear
+        in_features: 64
+        out_features: 1
+
+
+  
 
 riverraid:
   num_episodes: 100
@@ -31,11 +85,12 @@ riverraid:
 logging:
 
 network:
+  # for snakepac
   iteration: ""
   representation:
   - type: linear
-    in_features: 64
-    out_features: 128
+    in_features: "" # Will be set by the environment
+    out_features: 
     activation: relu
   - type: linear
     in_features: 128

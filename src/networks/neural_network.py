@@ -1,8 +1,6 @@
 import torch
-import yaml
 from src.networks.network_builder import NetworkBuilder
 import os
-import time
 
 
 class NeuralNetwork:
@@ -21,6 +19,11 @@ class NeuralNetwork:
         if self.network is not None:
             self.network.to(device)
 
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError("Subclasses must implement this method.")
+        
+        
     def save_model(
         self, subdir: int, model_name="representation_model.pth", dir="models"
     ):
@@ -83,59 +86,64 @@ class NeuralNetwork:
 
     def postprocess(self, x):
         return x
+    
+    def get_parameters(self):
+        return self.network.parameters()
 
 
-def save_network():
-    timestamp = int(time.time())
-    representation_net.save_model(timestamp, "representation_model.pth")
-    dynamics_net.save_model(timestamp, "dynamics_model.pth")
-    prediction_net.save_model(timestamp, "prediction_model.pth")
+class RepresentationNetwork(NeuralNetwork):
+    def __init__(self, layer_configs, device, build=True):
+        super().__init__(layer_configs, device, build)
+    
+    def __call__(self, x):
+        x = self.preprocess(x)
+        hidden_activation = self.forward(x)
+        return self.postprocess(hidden_activation)
 
 
-def load_model(iteration=None):
-    representation_net.load_model(iteration)
-    dynamics_net.load_model(iteration)
-    prediction_net.load_model(iteration)
+class DynamicsNetwork(NeuralNetwork):
+    def __init__(self, layer_configs, device, build=True):
+        head_layers = layer_configs[-2:]
+        build_layers = layer_configs[:-2]
+        super().__init__(build_layers, device, build)
+        self.state_head = NetworkBuilder.build_layer(head_layers[0])
+        self.reward_head = NetworkBuilder.build_layer(head_layers[1])
+    
+    def __call__(self, x, a):
+        input = self.preprocess(x, a)
+        hidden_activation = self.forward(input)
+        return self.postprocess(hidden_activation)
+    
+    def preprocess(self, x, a):
+        # TODO: concat hidden state and action :D
+        raise NotImplementedError("Not implemented.")
+    
+    def postprocess(self, hidden_activation):
+        # Return new hidden state and reward
+        return self.state_head(hidden_activation), self.reward_head(hidden_activation)
+    
+    def get_parameters(self):
+        return super().get_parameters() + list(self.state_head.parameters()) + list(self.reward_head.parameters())
+    
 
-
-if __name__ == "__main__":
-    # Load the configuration from the YAML file.
-    config_filename = "config.yaml"
-    with open(config_filename, "r") as file:
-        loaded_config = yaml.safe_load(file)
-
-    # Initialize device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    if loaded_config["network"]["iteration"] is None:
-        # Initialize networks
-        representation_net = NeuralNetwork(
-            loaded_config["network"]["representation"], device=device
-        )
-        dynamics_net = NeuralNetwork(
-            loaded_config["network"]["dynamics"], device=device
-        )
-        prediction_net = NeuralNetwork(
-            loaded_config["network"]["prediction"], device=device
-        )
-
-    else:
-        representation_net = NeuralNetwork(
-            loaded_config["network"]["representation"], device=device, build=False
-        )
-        dynamics_net = NeuralNetwork(
-            loaded_config["network"]["dynamics"], device=device, build=False
-        )
-        prediction_net = NeuralNetwork(
-            loaded_config["network"]["prediction"], device=device, build=False
-        )
-
-        representation_net.load_model(
-            loaded_config["network"]["iteration"], "representation_model.pth"
-        )
-        dynamics_net.load_model(
-            loaded_config["network"]["iteration"], "dynamics_model.pth"
-        )
-        prediction_net.load_model(
-            loaded_config["network"]["iteration"], "prediction_model.pth"
-        )
+class PredictionNetwork(NeuralNetwork):
+    def __init__(self, layer_configs, device, build=True):
+        head_layers = layer_configs[-2:]
+        build_layers = layer_configs[:-2]
+        super().__init__(build_layers, device, build)
+        self.value_head = NetworkBuilder.build_layer(head_layers[0])
+        self.policy_head = NetworkBuilder.build_layer(head_layers[1])
+        
+    def __call__(self, x):
+        input = self.preprocess(x)
+        hidden_activation = self.forward(input)
+        return self.postprocess(hidden_activation)
+        
+    def postprocess(self, hidden_activation):
+        return self.policy_head(hidden_activation), self.value_head(hidden_activation)
+    
+    def get_parameters(self):
+        return super().get_parameters() + list(self.value_head.parameters()) + list(self.policy_head.parameters())
+    
+    def forward(self, x):
+        return self.network(x)
