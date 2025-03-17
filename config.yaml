@@ -3,9 +3,8 @@ logging: True
 
 snakepac:
   num_episodes: 100
-  num_episode_step: 50
-  training_interval: 20
-  history_length: 20
+  num_episode_step: 20
+  training_interval: 5
   num_simulations: 100
   I_t: 10
   batch_size: 32
@@ -20,11 +19,11 @@ snakepac:
   
   network:
     iteration: ""
-    state_window: 4
+    state_window: 1
     hidden_state_size: 16
     representation:
     - type: linear
-      in_features: 44 # World length * window size + 4 (corresponding actions)
+      in_features: 11 # World length * window size + 4 (corresponding actions)
       out_features: 128
       activation: relu
     - type: linear

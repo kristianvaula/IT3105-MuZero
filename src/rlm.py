@@ -27,12 +27,13 @@ class ReinforcementLearningManager():
     self.monte_carlo = monte_carlo 
     self.nnm = nnm
     self.episode_buffer = episode_buffer
+    self.config = config
 
     self.num_episodes = config.environment.num_episodes             # Ne: total number of episodes
     self.num_episode_steps = config.environment.num_episode_steps       # Nes: max steps per episode
     self.training_interval = config.environment.training_interval     # It: training update interval
     self.minibatch_size = config.environment.batch_size           # mbs: minibatch size for BPTT
-    self.history_length = config.environment.history_length          # q: number of past states required for φₖ
+    self.history_length = config.environment.network.state_window          # q: number of past states required for φₖ
     
   def train(self):
     """
@@ -41,24 +42,19 @@ class ReinforcementLearningManager():
     for episode in range(self.num_episodes):
       # (a) Reset env and obtain initial state s₀.
       current_state = self.env.reset()
+      action = self.env.action_space.sample()
       
       episode_data = Episode()
       
       state_history = []
+      action_history = []
       done = False
       
-      for step in range(self.num_episode_steps):
+      for _ in range(self.num_episode_steps):
         state_history.append(current_state)
-        
-        # If we dont have enough history, pad with zeros.
-        if len(state_history) < self.history_length + 1:
-          padding = [np.zeros_like(current_state) for _ in range(self.history_length + 1 - len(state_history))]
-          phi_k = padding + state_history
-        else: 
-          # ϕₖ = last (q+1) states.
-          phi_k = state_history[-self.history_length - 1:]
-      
-        phi_k_tensor = torch.tensor(phi_k, dtype=torch.float32)
+        action_history.append(action)
+
+        phi_k_tensor = self._get_phi_k(state_history, action_history)
         abstract_state, _, _, _, _ = self.nnm.translate_and_evaluate(phi_k_tensor)
         
         # Initialize u-Tree with abtract state σ₀ and run uMCTS
@@ -66,7 +62,7 @@ class ReinforcementLearningManager():
         
         # Sample action aₖ₊₁ from the policy πₖ
         action = self.__sample_action(policy)
-        
+
         # Simulate one timestep in the game: sₖ₊₁, rₖ₊₁
         next_state, reward, done, info = self.env.step(action)
         
@@ -92,7 +88,19 @@ class ReinforcementLearningManager():
         print(f"Episode {episode + 1} Loss: {loss}")
     
     return self.nnm
-      
+  
+  def _get_phi_k(self, state_history, action_history):
+    """
+    Returns the history of states ϕₖ.
+    """
+    if self.config.environment == "snakepac":
+      state_window = self.history_length       
+      state_tensor = torch.tensor(state_history[:-state_window], dtype=torch.float32)
+      action_tensor = torch.tensor(action_history[:-state_window], dtype=torch.float32)
+      return torch.cat((state_tensor, action_tensor), dim=1)
+    else:
+      raise NotImplementedError("Only SnakePac environment is supported.")
+  
   def _sample_action(self, policy):
     """
     Samples an action from the policy.

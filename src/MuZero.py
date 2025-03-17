@@ -51,10 +51,9 @@ class MuZero:
 
         # Initalize reinforcement learning manager (RLM)
         self.rlm = ReinforcementLearningManager(env, gsm, monte_carlo, nnm, episode_buffer, config)
-        # return monte_carlo, episode_buffer
 
     def run_training(self):
-        pass  # self.rlm.train();
+        self.rlm.train();
 
     def __initialize_env(self, config: Config):
         if config.environment_name == "snakepac":

@@ -9,8 +9,8 @@ class SnakePacEnv(gym.Env):
     super(SnakePacEnv, self).__init__()
     self.world_length = world_length
     
-    # Two actions: 0 = left, 1 = right.
-    self.action_space = gym.spaces.Discrete(2)
+    # Two actions: 0 = no-op, 1 = left, 2 = right.
+    self.action_space = gym.spaces.Discrete(3)
     
     # Observation: one-dimensional array of length 10.
     # We'll use 0 for empty, 1 for the agent, and 2 for the coin.
@@ -43,27 +43,28 @@ class SnakePacEnv(gym.Env):
     return self._get_obs(), {}
 
   def step(self, action):
-    # Validate action (0: left, 1: right).
-    if action not in [0, 1]:
-      raise ValueError("Invalid Action. Action must be 0 (left) or 1 (right).")
+    # Validate action (0: no-op, 1: left, 2: right).
+    if action not in [0, 1, 2]:
+        raise ValueError("Invalid Action. Action must be 0 (no-op), 1 (left) or 2 (right).")
     
-    # Move the user.
-    if action == 0:
-      self.user_pos = max(0, self.user_pos - 1)
-    elif action == 1:
-      self.user_pos = min(self.world_length - 1, self.user_pos + 1)
+    # Execute the action.
+    if action == 1:
+        self.user_pos = max(0, self.user_pos - 1)
+    elif action == 2:
+        self.user_pos = min(self.world_length - 1, self.user_pos + 1)
+    # action==0: no-op (do nothing)
     
     reward = 0
     done = False  # This environment is endless.
     
     # Check if the user lands on the coin.
     if self.user_pos == self.coin_pos:
-      reward = 1
-      # Respawn the coin at a new location.
-      new_coin_pos = self.np_random.integers(0, self.world_length)
-      while new_coin_pos == self.user_pos:
+        reward = 1
+        # Respawn the coin at a new location.
         new_coin_pos = self.np_random.integers(0, self.world_length)
-      self.coin_pos = new_coin_pos
+        while new_coin_pos == self.user_pos:
+            new_coin_pos = self.np_random.integers(0, self.world_length)
+        self.coin_pos = new_coin_pos
 
     info = {}
     # Gymnasium's step should return: observation, reward, terminated, truncated, info.
