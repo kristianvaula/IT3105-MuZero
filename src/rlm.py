@@ -93,8 +93,8 @@ class ReinforcementLearningManager():
     Returns the history of states ϕₖ.
     """
     if self.config.environment_name == "snakepac":
-      state_window = self.history_length       
-      state_tensor = torch.tensor(state_history[-state_window:], dtype=torch.float32).flatten()
+      state_window = self.history_length   
+      state_tensor = torch.tensor(np.array(state_history[-state_window:]), dtype=torch.float32).flatten()
       action_tensor = torch.tensor(action_history[-state_window:], dtype=torch.float32)
       cat = torch.cat((state_tensor, action_tensor), dim=0)
       return cat

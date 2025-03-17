@@ -45,6 +45,7 @@ snakepac:
       - type: linear
         in_features: 32
         out_features: *action_size_snakepac
+        activation: softmax
       # last layer is the value layer
       - type: linear
         in_features: 32

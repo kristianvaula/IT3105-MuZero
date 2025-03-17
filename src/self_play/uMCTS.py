@@ -119,12 +119,9 @@ class uMCTS:
         For the root node, legal actions can be obtained vis GSM.
         For the deeper nodes, we assume all actions are possible.
         """
-        if node.parent is None:
-            actions = self.gsm.get_legal_actions(node.state)
-        else:
-            actions = self.action_space.n
+        actions = self.action_space.n
 
-        for action in actions:
+        for action in range(actions):
             if action not in node.children:
                 next_state, predicted_reward = self.nnm.NNd(node.state, action)
                 child_node = Node(next_state, parent=node)
@@ -142,6 +139,7 @@ class uMCTS:
         current_state = node.state
         for d in range(remaining_depth):
             policy, _ = self.nnm.NNp(current_state)
+            print(policy)
             action = self.__sample_action(policy)
 
             next_state, reward = self.nnm.NNd(current_state, action)
@@ -157,7 +155,6 @@ class uMCTS:
         """
         Sample an action from a probability distribution.
         """
-        print(policy)
         return torch.multinomial(policy, num_samples=1).item()
 
     def __backpropagate(self, node: Node, accum_reward):

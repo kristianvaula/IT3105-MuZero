@@ -131,6 +131,8 @@ class PredictionNetwork(NeuralNetwork):
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
         self.policy_head = NetworkBuilder(head_layers).build_layer(head_layers[0])
+        print(self.policy_head)
+        print(head_layers)
         self.value_head = NetworkBuilder(head_layers).build_layer(head_layers[1])
         
     def __call__(self, x):
