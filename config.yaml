@@ -10,7 +10,7 @@ snakepac:
   batch_size: 32
   world_length: 10
   seed: 42
-  action_space: 2
+  action_space: &action_size_snakepac 2
   uMCTS:
     num_searches: 20
     max_depth: 8
@@ -20,7 +20,7 @@ snakepac:
   network:
     iteration: ""
     state_window: 1
-    hidden_state_size: 16
+    hidden_state_size: &hidden_size_snakepac 16
     representation:
     - type: linear
       in_features: 11 # World length * window size + 4 (corresponding actions)
@@ -31,11 +31,11 @@ snakepac:
       out_features: 64
     - type: linear
       in_features: 64
-      out_features: ${{snakepac.network.hidden_state_size}}
+      out_features: *hidden_size_snakepac
 
     prediction:
       - type: linear
-        in_features: ${{snakepac.network.hidden_state_size}}
+        in_features: *hidden_size_snakepac
         out_features: 64
         activation: relu
       - type: linear
@@ -44,7 +44,7 @@ snakepac:
       # second to last layer is the policy layer
       - type: linear
         in_features: 32
-        out_features: ${{snakepac.action_space}}
+        out_features: *action_size_snakepac
       # last layer is the value layer
       - type: linear
         in_features: 32
@@ -61,7 +61,7 @@ snakepac:
       # second to last layer is the hidden state layer
       - type: linear
         in_features: 64
-        out_features: ${{snakepac.network.hidden_state_size}}
+        out_features: *hidden_size_snakepac
       # last layer is the reward layer
       - type: linear
         in_features: 64

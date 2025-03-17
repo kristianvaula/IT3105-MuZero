@@ -41,7 +41,7 @@ class ReinforcementLearningManager():
     """
     for episode in range(self.num_episodes):
       # (a) Reset env and obtain initial state s₀.
-      current_state = self.env.reset()
+      current_state, _ = self.env.reset()
       action = self.env.action_space.sample()
       
       episode_data = Episode()
@@ -53,7 +53,6 @@ class ReinforcementLearningManager():
       for _ in range(self.num_episode_steps):
         state_history.append(current_state)
         action_history.append(action)
-
         phi_k_tensor = self._get_phi_k(state_history, action_history)
         abstract_state, _, _, _, _ = self.nnm.translate_and_evaluate(phi_k_tensor)
         
@@ -95,9 +94,10 @@ class ReinforcementLearningManager():
     """
     if self.config.environment_name == "snakepac":
       state_window = self.history_length       
-      state_tensor = torch.tensor(state_history[:-state_window], dtype=torch.float32)
-      action_tensor = torch.tensor(action_history[:-state_window], dtype=torch.float32)
-      return torch.cat((state_tensor, action_tensor), dim=1)
+      state_tensor = torch.tensor(state_history[-state_window:], dtype=torch.float32).flatten()
+      action_tensor = torch.tensor(action_history[-state_window:], dtype=torch.float32)
+      cat = torch.cat((state_tensor, action_tensor), dim=0)
+      return cat
     else:
       raise NotImplementedError("Only SnakePac environment is supported.")
   
