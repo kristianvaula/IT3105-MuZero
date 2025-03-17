@@ -37,7 +37,7 @@ class EpisodeBuffer:
         """ Adds a new episode (list of steps) to the buffer """
         self.episodes.append(episode)
 
-    def sample_state(self, q=0, w=0):
+    def sample_state(self, q=0, K=0):
         """ 
         Randomly selects an episode and a state within that episode.
         Returns a sequence of q+1 states ending at the selected state (for BPTT).
@@ -52,9 +52,9 @@ class EpisodeBuffer:
             raise ValueError(f"Episode length ({max_index}) is less than q ({q}).")
         
         # Choose random state ensuring enough look-back and k+w does not exceed episode length
-        k = random.randint(q, max_index-w) 
+        k = random.randint(q, max_index-K)
         
-        return episode.steps[k - q:k + w + 1] # Return {sb, k-q, ..., sb, k, ..., sb, k+w}
+        return episode.steps[k - q:k + K + 1] # Return {sb, k-q, ..., sb, k, ..., sb, k+w}
       
     def save_history(self):
         """ Saves all episodes to a file. """
