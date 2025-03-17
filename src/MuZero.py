@@ -3,6 +3,7 @@ from src.storage.episode_buffer import EpisodeBuffer
 from src.self_play.uMCTS import uMCTS
 from src.networks.network_builder import NeuralNetwork
 from src.networks.neural_network_manager import NeuralNetManager
+from src.rlm import ReinforcementLearningManager
 
 """ Important parameters 
 
@@ -41,18 +42,15 @@ class MuZero:
         # Initialize neural network manager (NNM)
         nnm = NeuralNetManager(representation_network, dynamics_network, prediction_network)
 
-        # Initialize abstract state manager (ASM) using representation network
-        # TODO Maybe remove?
-
         # Intialize u-MCTS module
-        self.monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
+        monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
             config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
 
         # Initialize episode buffer
-        self.episode_buffer = EpisodeBuffer()
+        episode_buffer = EpisodeBuffer()
 
         # Initalize reinforcement learning manager (RLM)
-        self.rlm = 0  # TODO
+        self.rlm = ReinforcementLearningManager(env, gsm, monte_carlo, nnm, episode_buffer, config)
         # return monte_carlo, episode_buffer
 
     def run_training(self):

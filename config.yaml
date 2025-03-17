@@ -3,6 +3,9 @@ logging: True
 
 snakepac:
   num_episodes: 100
+  num_episode_step: 50
+  training_interval: 20
+  history_length: 20
   num_simulations: 100
   I_t: 10
   batch_size: 32
