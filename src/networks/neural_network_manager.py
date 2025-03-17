@@ -112,6 +112,7 @@ class NeuralNetManager:
             predictions.append((1.0 / len(action_seq), value, reward, policy_t))
 
             hidden_state = self.__scale_gradient(hidden_state, 0.5)
+            hidden_state = self.__scale_gradient(hidden_state, 0.5)
 
         for k, (prediction, target) in enumerate(zip(predictions, targets)):
             gradient_scale, value, reward, policy_t = prediction
