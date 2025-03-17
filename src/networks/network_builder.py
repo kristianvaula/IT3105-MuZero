@@ -20,8 +20,8 @@ class NetworkBuilder:
                 layers.append(activation_layer)
                 
         return nn.Sequential(*layers)
-
-    def build_layer(self, layer_config):
+    
+    def build_layer(self, layer_config: dict):
         """
         Build a layer from a configuration.
         """
@@ -38,7 +38,7 @@ class NetworkBuilder:
         """
         return nn.Linear(layer_config["in_features"], layer_config["out_features"])
 
-    def __build_conv2d(self, layer_config):
+    def __build_conv2d(self, layer_config: dict):
         """
         Build a 2D convolutional layer from a configuration.
         """
@@ -50,7 +50,7 @@ class NetworkBuilder:
             padding=layer_config.get("padding", 0)
         )
 
-    def __parse_activation(self, activation):
+    def __parse_activation(self, activation: str):
         if activation == "relu":
             return nn.ReLU()
         if activation == "sigmoid":
