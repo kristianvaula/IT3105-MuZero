@@ -60,10 +60,10 @@ class ReinforcementLearningManager():
         policy, root_value = self.monte_carlo.search(abstract_state)
         
         # Sample action aₖ₊₁ from the policy πₖ
-        action = self.__sample_action(policy)
+        action = self._sample_action(policy)
 
         # Simulate one timestep in the game: sₖ₊₁, rₖ₊₁
-        next_state, reward, done, info = self.env.step(action)
+        next_state, reward, done, terminated, info = self.env.step(action)
         
         # Save the training data for this step.
         episode_data.add_step(
@@ -75,7 +75,7 @@ class ReinforcementLearningManager():
         )
         
         current_state = next_state
-        if done:
+        if done or terminated:
           break
       
       # Add the completed episode to the episode buffer
@@ -83,7 +83,7 @@ class ReinforcementLearningManager():
       
       # Every training_interval episodes, perform BPTT training
       if (episode + 1) % self.training_interval == 0:
-        loss = self.nnm.bptt(self.episode_buffer)
+        loss = self.nnm.bptt(self.episode_buffer, self.history_length)
         print(f"Episode {episode + 1} Loss: {loss}")
     
     return self.nnm

@@ -139,7 +139,6 @@ class uMCTS:
         current_state = node.state
         for d in range(remaining_depth):
             policy, _ = self.nnm.NNp(current_state)
-            print(policy)
             action = self.__sample_action(policy)
 
             next_state, reward = self.nnm.NNd(current_state, action)

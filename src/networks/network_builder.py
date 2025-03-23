@@ -62,5 +62,5 @@ class NetworkBuilder:
         if activation == "tanh":
             return nn.Tanh()
         if activation == "softmax":
-            return nn.Softmax(dim=1)
+            return nn.Softmax(dim=0)
         raise ValueError(f"Unknown activation function: {activation}")

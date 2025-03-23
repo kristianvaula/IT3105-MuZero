@@ -2,6 +2,9 @@ import torch
 from src.networks.network_builder import NetworkBuilder
 import os
 
+def build_head(head_config):
+    layers = NetworkBuilder([head_config]).build_layer(head_config)
+    return torch.nn.Sequential(*layers) if len(layers) > 1 else layers[0]
 
 class NeuralNetwork:
     def __init__(self, layer_configs, device, build=True, iteration=None):
@@ -88,7 +91,7 @@ class NeuralNetwork:
         return x
     
     def get_parameters(self):
-        return self.network.parameters()
+        return list(self.network.parameters())
 
 
 class RepresentationNetwork(NeuralNetwork):
@@ -106,8 +109,8 @@ class DynamicsNetwork(NeuralNetwork):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
-        self.state_head = NetworkBuilder(head_layers).build_layer(head_layers[0])[0]
-        self.reward_head = NetworkBuilder(head_layers).build_layer(head_layers[1])[0]
+        self.state_head = build_head(head_layers[0])
+        self.reward_head = build_head(head_layers[1])
     
     def __call__(self, x, **kwargs):
         input = self.preprocess(x)
@@ -130,8 +133,8 @@ class PredictionNetwork(NeuralNetwork):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
-        self.policy_head = NetworkBuilder(head_layers).build_layer(head_layers[0])[0]
-        self.value_head = NetworkBuilder(head_layers).build_layer(head_layers[1])[0]
+        self.policy_head = build_head(head_layers[0])
+        self.value_head = build_head(head_layers[1])
         
     def __call__(self, x):
         input = self.preprocess(x)
