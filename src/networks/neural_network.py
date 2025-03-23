@@ -106,8 +106,8 @@ class DynamicsNetwork(NeuralNetwork):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
-        self.state_head = NetworkBuilder(head_layers).build_layer(head_layers[0])
-        self.reward_head = NetworkBuilder(head_layers).build_layer(head_layers[1])
+        self.state_head = NetworkBuilder(head_layers).build_layer(head_layers[0])[0]
+        self.reward_head = NetworkBuilder(head_layers).build_layer(head_layers[1])[0]
     
     def __call__(self, x, **kwargs):
         input = self.preprocess(x)
@@ -130,10 +130,8 @@ class PredictionNetwork(NeuralNetwork):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
         super().__init__(build_layers, device, build)
-        self.policy_head = NetworkBuilder(head_layers).build_layer(head_layers[0])
-        print(self.policy_head)
-        print(head_layers)
-        self.value_head = NetworkBuilder(head_layers).build_layer(head_layers[1])
+        self.policy_head = NetworkBuilder(head_layers).build_layer(head_layers[0])[0]
+        self.value_head = NetworkBuilder(head_layers).build_layer(head_layers[1])[0]
         
     def __call__(self, x):
         input = self.preprocess(x)
