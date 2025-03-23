@@ -1,17 +1,17 @@
 environment: 'snakepac' # 'snakepac' or other when implemented
 logging: True
 
-load_model: False
+load_model: True
 save_model: True
 
 snakepac:
   num_episodes: 1000
-  num_episode_step: 15
-  training_interval: 10
-  num_simulations: 30
+  num_episode_step: 20
+  training_interval: 50
+  num_simulations: 20
   I_t: 10
   batch_size: 32
-  world_length: 10
+  world_length: 8
   seed: 42
   action_space: &action_size_snakepac 3
   uMCTS:
@@ -26,7 +26,7 @@ snakepac:
     hidden_state_size: &hidden_size_snakepac 16
     representation:
     - type: linear
-      in_features: 11 # World length * state_window + state_window (corresponding actions)
+      in_features: 9 # World length * state_window + state_window (corresponding actions)
       out_features: 128
       activation: relu
     - type: linear

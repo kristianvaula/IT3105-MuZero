@@ -106,7 +106,7 @@ class ReinforcementLearningManager():
         if hasattr(self.env, "render"):
             self.env.render()
         
-        while not done:
+        while not done and len(state_history) < self.num_episode_steps:
             # Append current state to history
             state_history.append(current_state)
             

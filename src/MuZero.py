@@ -53,7 +53,7 @@ class MuZero:
         self.rlm = ReinforcementLearningManager(env, gsm, monte_carlo, self.nnm, episode_buffer, config)
 
     def run_training(self):
-        self.rlm.train();
+        self.rlm.train()
         
     def save_models(self):
         self.nnm.representation.save_model()
