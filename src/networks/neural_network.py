@@ -70,14 +70,13 @@ class NeuralNetwork:
             subdirs = os.listdir(dir)
             if not subdirs:
                 raise FileNotFoundError("No models found in directory.")
-
-            if iteration is None:
+            if iteration is None or iteration == "":
                 subdir = str(max(int(s) for s in subdirs))
             else:
                 subdir = str(iteration)
 
             model_path = os.path.join(dir, subdir, model_name)
-
+            
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Model file {model_path} not found.")
 

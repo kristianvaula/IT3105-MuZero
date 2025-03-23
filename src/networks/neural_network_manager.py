@@ -70,6 +70,7 @@ class NeuralNetManager:
     def bptt(self, buffer: EpisodeBuffer, q: int, K: int = 5) -> torch.Tensor:
         batch = buffer.sample_state(q, K)
 
+        # TODO Get learning rates and weight decay from config
         lr = self.__lr_decay()
         optimizer = torch.optim.Adam(self.get_weights(), lr=lr, weight_decay=1e-4)
 
