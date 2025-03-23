@@ -88,6 +88,56 @@ class ReinforcementLearningManager():
     
     return self.nnm
   
+  def play(self, num_episodes: int):
+    """
+    Plays the game using the trained NeuralNetManager (nnm) for a given number of episodes.
+    Renders the environment at each time step.
+    """
+    for ep in range(num_episodes):
+        print(f"\n--- Starting Episode {ep+1} ---")
+        current_state, _ = self.env.reset()
+        done = False
+        
+        # Reset history for the current episode
+        state_history = []
+        action_history = []
+        
+        # Optionally render the initial state
+        if hasattr(self.env, "render"):
+            self.env.render()
+        
+        while not done:
+            # Append current state to history
+            state_history.append(current_state)
+            
+            # If there are no actions yet, you can choose a default (or sample a random one)
+            # so that the history tensor is correctly built
+            if not action_history:
+                action_history.append(self.env.action_space.sample())
+            
+            # Create the state-action history tensor (ϕₖ)
+            phi_k_tensor = self._get_phi_k(state_history, action_history)
+            
+            # Obtain the abstract state from the trained networks.
+            abstract_state, _, _, _, _ = self.nnm.translate_and_evaluate(phi_k_tensor)
+            
+            # Run u-MCTS starting from the abstract state.
+            policy, root_value = self.monte_carlo.search(abstract_state)
+            
+            # Sample the next action from the computed policy.
+            action = self._sample_action(policy)
+            action_history.append(action)
+            
+            # Take a step in the environment.
+            current_state, reward, done, terminated, info = self.env.step(action)
+            
+            # Optionally render the environment.
+            if hasattr(self.env, "render"):
+                self.env.render()
+        
+        print("Episode finished!")
+        
+  
   def _get_phi_k(self, state_history, action_history):
     """
     Returns the history of states ϕₖ.

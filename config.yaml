@@ -5,10 +5,10 @@ load_model: False
 save_model: True
 
 snakepac:
-  num_episodes: 200
-  num_episode_step: 10
-  training_interval: 20
-  num_simulations: 100
+  num_episodes: 1000
+  num_episode_step: 15
+  training_interval: 10
+  num_simulations: 30
   I_t: 10
   batch_size: 32
   world_length: 10
@@ -26,7 +26,7 @@ snakepac:
     hidden_state_size: &hidden_size_snakepac 16
     representation:
     - type: linear
-      in_features: 11 # World length * window size + 4 (corresponding actions)
+      in_features: 11 # World length * state_window + state_window (corresponding actions)
       out_features: 128
       activation: relu
     - type: linear

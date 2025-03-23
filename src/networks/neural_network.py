@@ -58,6 +58,7 @@ class NeuralNetwork:
 
         model_path = f"{dir_path}/{model_name}"
         torch.save(self.network.state_dict(), model_path)
+        print(f"Model saved to {model_path}")
 
     def load_model(
         self, iteration=None, model_name="representation_model.pth", dir="models"

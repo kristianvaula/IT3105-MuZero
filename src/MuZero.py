@@ -84,6 +84,8 @@ def main():
     muzero.run_training()
     if config.save_model:
         muzero.save_models()
+        
+    muzero.rlm.play(5)
 
 
 if __name__ == "__main__":

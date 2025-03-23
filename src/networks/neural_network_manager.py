@@ -128,14 +128,14 @@ class NeuralNetManager:
         for k, (prediction, target) in enumerate(zip(predictions, targets)):
             gradient_scale, value, reward, policy_t = prediction
             target_value, target_reward, target_policy = target
-            l_v = self.__loss_fn(value, torch.tensor(target_value, dtype=torch.float32).unsqueeze(0))
-
-            l_r = 0
-            l_p = 0
-
-            if k > 0:
-                l_r = self.__loss_fn(reward, torch.tensor(target_reward, dtype=torch.float32).unsqueeze(0))
-                l_p = self.__policy_loss_fn(policy_t, torch.tensor(target_policy, dtype=torch.float32))
+            
+            target_value = torch.tensor(target_value, dtype=torch.float32).unsqueeze(0)
+            target_reward = torch.tensor(target_reward, dtype=torch.float32).unsqueeze(0)
+            target_policy = torch.tensor(target_policy, dtype=torch.float32)
+            
+            l_v = self.__loss_fn(value, target_value)
+            l_r = self.__loss_fn(reward, target_reward) if k > 0 else 0
+            l_p = self.__policy_loss_fn(policy_t, target_policy) if k > 0 else 0
 
             l_loss = l_r + l_v + l_p
 
