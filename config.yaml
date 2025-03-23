@@ -1,8 +1,10 @@
 environment: 'snakepac' # 'snakepac' or other when implemented
 logging: True
+load_model: False
+save_model: True
 
 snakepac:
-  num_episodes: 100
+  num_episodes: 50
   num_episode_step: 20
   training_interval: 5
   num_simulations: 100

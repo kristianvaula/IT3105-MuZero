@@ -25,37 +25,40 @@ class MuZero:
 
         # Initialize neural networks with configurations
         # TODO
-        build = config.networks.iteration is None
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        if build:
-            # TODO: Add method for calculating input layer
-            representation_network = RepresentationNetwork(config.networks.representation, device=device, build=build)
-            dynamics_network = DynamicsNetwork(config.networks.dynamics, device=device, build=build)
-            prediction_network = PredictionNetwork(config.networks.prediction, device=device, build=build)
-        
-        else:
-            representation_network = RepresentationNetwork(config.networks.representation, device=device, build=build)
-            dynamics_network = DynamicsNetwork(config.networks.dynamics, device=device, build=build)
-            prediction_network = PredictionNetwork(config.networks.prediction, device=device, build=build)
+        if config.load_model and config.networks.iteration is not None:
+            representation_network = RepresentationNetwork(config.networks.representation, device=device)
+            dynamics_network = DynamicsNetwork(config.networks.dynamics, device=device)
+            prediction_network = PredictionNetwork(config.networks.prediction, device=device)
             representation_network.load_model(config.networks.iteration, "representation_model.pth")
             dynamics_network.load_model(config.networks.iteration, "dynamics_model.pth")
             prediction_network.load_model(config.networks.iteration, "prediction_model.pth")
+        else:
+            # TODO: Add method for calculating input layer
+            representation_network = RepresentationNetwork(config.networks.representation, device=device)
+            dynamics_network = DynamicsNetwork(config.networks.dynamics, device=device)
+            prediction_network = PredictionNetwork(config.networks.prediction, device=device)
             
         # Initialize neural network manager (NNM)
-        nnm = NeuralNetManager(representation_network, dynamics_network, prediction_network)
+        self.nnm = NeuralNetManager(representation_network, dynamics_network, prediction_network)
 
         # Intialize u-MCTS module
-        monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
+        monte_carlo = uMCTS(self.nnm, gsm, env.action_space, config.uMCTS.num_searches,
             config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
 
         # Initialize episode buffer
         episode_buffer = EpisodeBuffer()
 
         # Initalize reinforcement learning manager (RLM)
-        self.rlm = ReinforcementLearningManager(env, gsm, monte_carlo, nnm, episode_buffer, config)
+        self.rlm = ReinforcementLearningManager(env, gsm, monte_carlo, self.nnm, episode_buffer, config)
 
     def run_training(self):
         self.rlm.train();
+        
+    def save_models(self):
+        self.nnm.representation.save_model()
+        self.nnm.dynamics.save_model()
+        self.nnm.prediction.save_model()
 
     def __initialize_env(self, config: Config):
         if config.environment_name == "snakepac":
@@ -79,6 +82,8 @@ def main():
 
     # Run training loop
     muzero.run_training()
+    if config.save_model:
+        muzero.save_models()
 
 
 if __name__ == "__main__":

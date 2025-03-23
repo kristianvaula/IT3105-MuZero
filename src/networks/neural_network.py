@@ -28,7 +28,7 @@ class NeuralNetwork:
         
         
     def save_model(
-        self, subdir: int, model_name="representation_model.pth", dir="models"
+        self, subdir: int | None = None, model_name="representation_model.pth", dir="models"
     ):
         """
         Save the model to a directory.
@@ -41,7 +41,18 @@ class NeuralNetwork:
         if self.network is None:
             raise ValueError("Model has not been initialized. Cannot save.")
 
-        subdir = str(subdir)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        
+        if subdir is None:
+            subdirs = os.listdir(dir)
+            if not subdirs:
+                subdir = 0
+            else:
+                subdir = str(max(int(s) for s in subdirs))
+        else: 
+            subdir = str(subdir)
+            
         dir_path = f"{dir}/{subdir}"
         os.makedirs(dir_path, exist_ok=True)
 
@@ -55,6 +66,7 @@ class NeuralNetwork:
         Load the model from a directory.
         """
         try:
+            
             subdirs = os.listdir(dir)
             if not subdirs:
                 raise FileNotFoundError("No models found in directory.")
@@ -117,6 +129,9 @@ class DynamicsNetwork(NeuralNetwork):
         hidden_activation = self.forward(input)
         return self.postprocess(hidden_activation)
     
+    def save_model(self, subdir: int | None = None, model_name="dynamics_model.pth", dir="models"):
+        super().save_model(subdir, model_name, dir)
+    
     def preprocess(self, x, **kwargs):
         return x
     
@@ -140,6 +155,9 @@ class PredictionNetwork(NeuralNetwork):
         input = self.preprocess(x)
         hidden_activation = self.forward(input)
         return self.postprocess(hidden_activation)
+    
+    def save_model(self, subdir: int | None = None, model_name="prediction_model.pth", dir="models"):
+        super().save_model(subdir, model_name, dir)
         
     def postprocess(self, hidden_activation):
         return self.policy_head(hidden_activation), self.value_head(hidden_activation)
