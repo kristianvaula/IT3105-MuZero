@@ -2,9 +2,11 @@ import torch
 from src.networks.network_builder import NetworkBuilder
 import os
 
+
 def build_head(head_config):
     layers = NetworkBuilder([head_config]).build_layer(head_config)
     return torch.nn.Sequential(*layers) if len(layers) > 1 else layers[0]
+
 
 class NeuralNetwork:
     def __init__(self, layer_configs, device, build=True, iteration=None):
@@ -22,13 +24,14 @@ class NeuralNetwork:
         if self.network is not None:
             self.network.to(device)
 
-
     def __call__(self, x, **kwargs):
         raise NotImplementedError("Subclasses must implement this method.")
-        
-        
+
     def save_model(
-        self, subdir: int | None = None, model_name="representation_model.pth", dir="models"
+        self,
+        subdir: int | None = None,
+        model_name="representation_model.pth",
+        dir="models",
     ):
         """
         Save the model to a directory.
@@ -43,16 +46,16 @@ class NeuralNetwork:
 
         if not os.path.exists(dir):
             os.makedirs(dir)
-        
+
         if subdir is None:
             subdirs = os.listdir(dir)
             if not subdirs:
                 subdir = 0
             else:
                 subdir = str(max(int(s) for s in subdirs))
-        else: 
+        else:
             subdir = str(subdir)
-            
+
         dir_path = f"{dir}/{subdir}"
         os.makedirs(dir_path, exist_ok=True)
 
@@ -67,7 +70,9 @@ class NeuralNetwork:
         Load the model from a directory.
         """
         try:
-            
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+
             subdirs = os.listdir(dir)
             if not subdirs:
                 raise FileNotFoundError("No models found in directory.")
@@ -77,7 +82,7 @@ class NeuralNetwork:
                 subdir = str(iteration)
 
             model_path = os.path.join(dir, subdir, model_name)
-            
+
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Model file {model_path} not found.")
 
@@ -101,7 +106,7 @@ class NeuralNetwork:
 
     def postprocess(self, x):
         return x
-    
+
     def get_parameters(self):
         return list(self.network.parameters())
 
@@ -109,7 +114,7 @@ class NeuralNetwork:
 class RepresentationNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, build=True):
         super().__init__(layer_configs, device, build)
-    
+
     def __call__(self, x, **kwargs):
         x = self.preprocess(x)
         hidden_activation = self.forward(x)
@@ -123,25 +128,31 @@ class DynamicsNetwork(NeuralNetwork):
         super().__init__(build_layers, device, build)
         self.state_head = build_head(head_layers[0])
         self.reward_head = build_head(head_layers[1])
-    
+
     def __call__(self, x, **kwargs):
         input = self.preprocess(x)
         hidden_activation = self.forward(input)
         return self.postprocess(hidden_activation)
-    
-    def save_model(self, subdir: int | None = None, model_name="dynamics_model.pth", dir="models"):
+
+    def save_model(
+        self, subdir: int | None = None, model_name="dynamics_model.pth", dir="models"
+    ):
         super().save_model(subdir, model_name, dir)
-    
+
     def preprocess(self, x, **kwargs):
         return x
-    
+
     def postprocess(self, hidden_activation):
         # Return new hidden state and reward
         return self.state_head(hidden_activation), self.reward_head(hidden_activation)
-    
+
     def get_parameters(self):
-        return super().get_parameters() + list(self.state_head.parameters()) + list(self.reward_head.parameters())
-    
+        return (
+            super().get_parameters()
+            + list(self.state_head.parameters())
+            + list(self.reward_head.parameters())
+        )
+
 
 class PredictionNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, build=True):
@@ -150,20 +161,26 @@ class PredictionNetwork(NeuralNetwork):
         super().__init__(build_layers, device, build)
         self.policy_head = build_head(head_layers[0])
         self.value_head = build_head(head_layers[1])
-        
+
     def __call__(self, x):
         input = self.preprocess(x)
         hidden_activation = self.forward(input)
         return self.postprocess(hidden_activation)
-    
-    def save_model(self, subdir: int | None = None, model_name="prediction_model.pth", dir="models"):
+
+    def save_model(
+        self, subdir: int | None = None, model_name="prediction_model.pth", dir="models"
+    ):
         super().save_model(subdir, model_name, dir)
-        
+
     def postprocess(self, hidden_activation):
         return self.policy_head(hidden_activation), self.value_head(hidden_activation)
-    
+
     def get_parameters(self):
-        return super().get_parameters() + list(self.value_head.parameters()) + list(self.policy_head.parameters())
-    
+        return (
+            super().get_parameters()
+            + list(self.value_head.parameters())
+            + list(self.policy_head.parameters())
+        )
+
     def forward(self, x):
         return self.network(x)
