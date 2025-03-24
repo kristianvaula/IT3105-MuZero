@@ -30,11 +30,11 @@ class NeuralNetManager:
             return self.dynamics(torch.cat((state, action), dim=0))
         else:
             raise NotImplementedError("woopsies, ahead of your time")
-    
+
     def NNp(self, state):
         return self.prediction(state)
 
-    def __lr_decay(self, decay_rate=0.95):
+    def __lr_decay(self, decay_rate=0.99):
         return self.learning_rate * decay_rate**self.training_steps
 
     def translate_and_evaluate(self, game_state):
@@ -45,7 +45,7 @@ class NeuralNetManager:
         policy, value = self.prediction(hidden_state)
 
         # Only translate, so reward is 0 (tensor)
-        reward = torch.tensor(0, dtype=torch.float32)
+        reward = torch.tensor([0], dtype=torch.float32)
 
         policy_p = policy
 
@@ -54,7 +54,9 @@ class NeuralNetManager:
     def transition_and_evaluate(self, hidden_state, action):
         # Transition hidden state with action
         action_tensor = torch.tensor([action], dtype=torch.float32)
-        next_hidden_state, reward = self.dynamics(torch.cat((hidden_state.squeeze(), action_tensor), dim=0))
+        next_hidden_state, reward = self.dynamics(
+            torch.cat((hidden_state.squeeze(), action_tensor), dim=0)
+        )
 
         # Evaluate hidden state
         policy, value = self.prediction(next_hidden_state)
@@ -65,7 +67,9 @@ class NeuralNetManager:
 
     def get_weights(self) -> List[List[torch.Tensor]]:
         networks = [self.representation, self.dynamics, self.prediction]
-        return [p for net in networks for p in net.get_parameters()] # TODO Check if it should be [net.get_parameters() for net in networks]
+        return [
+            p for net in networks for p in net.get_parameters()
+        ]  # TODO Check if it should be [net.get_parameters() for net in networks]
 
     def bptt(self, buffer: EpisodeBuffer, q: int, K: int = 5) -> torch.Tensor:
         batch = buffer.sample_state(q, K)
@@ -89,7 +93,9 @@ class NeuralNetManager:
 
         # Translate to hidden state
         state_seq = np.array([step.state for step in batch[0:q]], dtype=np.float32)
-        prev_action_seq = np.array([step.action for step in batch[0:q]], dtype=np.float32)
+        prev_action_seq = np.array(
+            [step.action for step in batch[0:q]], dtype=np.float32
+        )
 
         action_seq = [step.action for step in batch[q + 1 :]]
         policy_seq = [step.policy for step in batch[q + 1 :]]
@@ -98,28 +104,26 @@ class NeuralNetManager:
 
         optimizer.zero_grad()
         loss = torch.tensor(0, dtype=torch.float32)
-       
-        targets = [
-            (v, r, p) 
-            for v, r, p in zip(value_seq, reward_seq, policy_seq)
-        ]
+
+        targets = [(v, r, p) for v, r, p in zip(value_seq, reward_seq, policy_seq)]
 
         # --- Initial Inference Step ---
         # Forward pass for the initial observation.
         state_tensor = torch.tensor(state_seq, dtype=torch.float32)
         action_tensor = torch.tensor(prev_action_seq, dtype=torch.float32).unsqueeze(-1)
         representation_input = torch.cat([state_tensor, action_tensor], dim=-1)
-        
+        representation_input = representation_input.squeeze()
+
         hidden_state, value, reward, _, policy_t = self.translate_and_evaluate(
             representation_input
         )
         predictions = [(1.0, value, reward, policy_t)]
 
         for action in action_seq:
-            
             hidden_state, value, reward, _, policy_t = self.transition_and_evaluate(
                 hidden_state, action
             )
+
             predictions.append((1.0 / len(action_seq), value, reward, policy_t))
 
             hidden_state = self.__scale_gradient(hidden_state, 0.5)
@@ -128,11 +132,13 @@ class NeuralNetManager:
         for k, (prediction, target) in enumerate(zip(predictions, targets)):
             gradient_scale, value, reward, policy_t = prediction
             target_value, target_reward, target_policy = target
-            
+
             target_value = torch.tensor(target_value, dtype=torch.float32).unsqueeze(0)
-            target_reward = torch.tensor(target_reward, dtype=torch.float32).unsqueeze(0)
+            target_reward = torch.tensor(target_reward, dtype=torch.float32).unsqueeze(
+                0
+            )
             target_policy = torch.tensor(target_policy, dtype=torch.float32)
-            
+
             l_v = self.__loss_fn(value, target_value)
             l_r = self.__loss_fn(reward, target_reward) if k > 0 else 0
             l_p = self.__policy_loss_fn(policy_t, target_policy) if k > 0 else 0
