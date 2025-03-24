@@ -113,14 +113,18 @@ class SnakePacGSM(GameStateManager):
 
         legal_actions = self.get_legal_actions(state)
 
-        policy = {action: 1.0 / len(legal_actions) for action in legal_actions}
+        policy = {action: 0 for action in legal_actions}
 
         if coin_idx < user_idx:
-            policy[0] = 0.8
-            policy[1] = 0.2
+            p = 0.6
+            policy[1] = p
+            policy[0] = (1 - p) / (len(legal_actions) - 1)
+            policy[2] = (1 - p) / (len(legal_actions) - 1)
         elif coin_idx > user_idx:
-            policy[0] = 0.2
-            policy[1] = 0.8
+            p = 0.6
+            policy[2] = p
+            policy[0] = (1 - p) / (len(legal_actions) - 1)
+            policy[1] = (1 - p) / (len(legal_actions) - 1)
 
         return policy
 
