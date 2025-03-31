@@ -49,8 +49,6 @@ class Config:
 
         self.environment_name = self.__config_data["environment"]
         self.logging = LoggingConfig(**self.__config_data["logging_config"])
-        self.load_model = self.__config_data["load_model"]
-        self.save_model = self.__config_data["save_model"]
 
         if self.environment_name == "snakepac":
             self.environment = SnakePacConfig(**self.__config_data["snakepac"])

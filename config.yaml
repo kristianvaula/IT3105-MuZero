@@ -8,11 +8,11 @@ logging_config:
   checkpoint_interval: 100
 
 snakepac:
-  num_episodes: 1000
-  num_episode_step: 20
-  training_interval: 25
-  buffer_size: 100
-  batch_size: 32
+  num_episodes: 1000 # How many episodes to train the model 
+  num_episode_step: 20 # How many steps to take in each episode 
+  training_interval: 25 # How often to train the model 
+  buffer_size: 75  # How many episodes to store in the buffer 
+  batch_size: 10   # Parameter K in the bptt, how many episodes to unroll from the buffer
   world_length: 8
   seed: 42
   action_space: &action_size_snakepac 3
@@ -24,8 +24,8 @@ snakepac:
   
   network:
     iteration: ""
-    state_window: 1
-    hidden_state_size: &hidden_size_snakepac 16
+    state_window: 1 # How many episodes we use to compute initial abstract state 
+    hidden_state_size: &hidden_size_snakepac 32
     representation:
     - type: linear
       in_features: 9 # World length * state_window + state_window (corresponding actions)
