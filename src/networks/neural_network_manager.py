@@ -71,7 +71,7 @@ class NeuralNetManager:
             p for net in networks for p in net.get_parameters()
         ]  # TODO Check if it should be [net.get_parameters() for net in networks]
 
-    def bptt(self, buffer: EpisodeBuffer, q: int, K: int = 5) -> torch.Tensor:
+    def bptt(self, buffer: EpisodeBuffer, q: int, K: int) -> torch.Tensor:
         batch = buffer.sample_state(q, K)
 
         # TODO Get learning rates and weight decay from config

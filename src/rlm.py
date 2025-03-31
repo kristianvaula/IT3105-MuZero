@@ -152,7 +152,7 @@ class ReinforcementLearningManager:
 
             # Every training_interval episodes, perform BPTT training
             if (episode + 1) % self.training_interval == 0:
-                loss = self.nnm.bptt(self.episode_buffer, self.history_length)
+                loss = self.nnm.bptt(self.episode_buffer, self.history_length, self.minibatch_size)
                 print(f"Episode {episode + 1} Loss: {loss}")
 
                 if self.use_wandb:

@@ -1,6 +1,8 @@
 env/
 episode_data/
 models/
+*.wandb
+wandb-metadata.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
