@@ -15,6 +15,7 @@ class LoggingConfig:
 class NetworkConfig:
     iteration: str
     state_window: int
+    roll_ahead: int
     hidden_state_size: int
     representation: list
     dynamics: list
@@ -35,7 +36,7 @@ class SnakePacConfig:
     num_episode_step: int
     training_interval: int
     buffer_size: int
-    batch_size: int
+    minibatch_size: int
     world_length: int
     seed: int
     action_space: int
