@@ -10,30 +10,28 @@ logging_config:
 snakepac:
   num_episodes: 1000 # How many episodes to train the model 
   num_episode_step: 20 # How many steps to take in each episode 
-  training_interval: 25 # How often to train the model 
+  training_interval: 50 # How often to train the model 
   buffer_size: 75  # How many episodes to store in the buffer 
-  batch_size: 10   # Parameter K in the bptt, how many episodes to unroll from the buffer
+  minibatch_size: 25   # Parameter K in the bptt, how many episodes to unroll from the buffer
   world_length: 8
   seed: 42
   action_space: &action_size_snakepac 3
   uMCTS:
     num_searches: 20
-    max_depth: 8
+    max_depth: 12
     ucb_constant: 1.0
-    discount_factor: 0.95
+    discount_factor: 0.90
   
   network:
     iteration: ""
     state_window: 1 # How many episodes we use to compute initial abstract state 
+    roll_ahead: 17 # How many steps we use to compute the next state
     hidden_state_size: &hidden_size_snakepac 32
     representation:
     - type: linear
       in_features: 9 # World length * state_window + state_window (corresponding actions)
       out_features: 128
       activation: relu
-    - type: linear
-      in_features: 128
-      out_features: 128
     - type: linear
       in_features: 128
       out_features: 64
@@ -46,9 +44,6 @@ snakepac:
         in_features: *hidden_size_snakepac
         out_features: 64
         activation: relu
-      - type: linear
-        in_features: 64
-        out_features: 64
       - type: linear
         in_features: 64
         out_features: 32
@@ -67,9 +62,6 @@ snakepac:
         in_features: 33 # &hidden_size_snakepac + 1 (action)
         out_features: 128
         activation: relu
-      - type: linear
-        in_features: 128
-        out_features: 128
       - type: linear
         in_features: 128
         out_features: 64
