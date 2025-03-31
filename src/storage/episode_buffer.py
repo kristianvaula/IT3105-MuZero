@@ -48,7 +48,21 @@ class EpisodeBuffer:
 
         self.episodes.append(episode)
 
-    def sample_state(self, q=0, K=0):
+    def sample(self, q, w, minibatch_size):
+        """
+        Gathers minibatch_size amount of episodes from sample_episode.
+        
+        Args:
+            minibatch_size (int): Number of episodes to sample.
+            q: Parameter used by sample_episode (adjust as needed).
+            w (int): Length of each sampled episode.
+            
+        Returns:
+            list: A list of sampled episodes.
+        """
+        return [self.sample_episode(q, w) for _ in range(minibatch_size)]
+
+    def sample_episode(self, q, w):
         """
         Randomly selects an episode and a state within that episode.
         Returns a sequence of q+1 states ending at the selected state (for BPTT).
@@ -63,10 +77,10 @@ class EpisodeBuffer:
             raise ValueError(f"Episode length ({max_index}) is less than q ({q}).")
 
         # Choose random state ensuring enough look-back and k+w does not exceed episode length
-        k = random.randint(q, max_index - K)
+        k = random.randint(q, max_index - w)
 
         return episode.steps[
-            k - q : k + K + 1
+            k - q : k + w + 1
         ]  # Return {sb, k-q, ..., sb, k, ..., sb, k+w}
 
     def save_history(self):
