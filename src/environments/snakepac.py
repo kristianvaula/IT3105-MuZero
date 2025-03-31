@@ -31,12 +31,20 @@ class SnakePacEnv(gym.Env):
             self.seed(seed)
         
         # Spawn the user at a random position.
-        self.user_pos = self.np_random.integers(0, self.world_length)
+        #self.user_pos = self.np_random.integers(0, self.world_length)
         
         # Spawn the coin at a different random position.
-        self.coin_pos = self.np_random.integers(0, self.world_length)
+        #self.coin_pos = self.np_random.integers(0, self.world_length)
+        #while self.coin_pos == self.user_pos:
+        #   self.coin_pos = self.np_random.integers(0, self.world_length)
+
+        self.coin_pos = 0
+
+        # spawm the coin at the same pos, but not the user
+        self.user_pos = self.np_random.integers(0, self.world_length)
         while self.coin_pos == self.user_pos:
-            self.coin_pos = self.np_random.integers(0, self.world_length)
+           self.user_pos = self.np_random.integers(0, self.world_length)
+
 
         return self._get_obs(), {}
 
@@ -72,10 +80,7 @@ class SnakePacEnv(gym.Env):
         if self.user_pos == self.coin_pos:
             reward = 1  # Main reward for collecting the coin.
             # Respawn the coin at a new location different from the agent.
-            new_coin_pos = self.np_random.integers(0, self.world_length)
-            while new_coin_pos == self.user_pos:
-                new_coin_pos = self.np_random.integers(0, self.world_length)
-            self.coin_pos = new_coin_pos
+            self.reset()
 
         info = {}
         # Gymnasium's step should return: observation, reward, terminated, truncated, info.
