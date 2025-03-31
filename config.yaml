@@ -3,10 +3,9 @@ logging:
   use_wandb: True
   wandb_project: 'MuZero'
   wandb_name: 'snakepac'
-
-load_model: False
-save_model: True
-
+  load_model: False
+  save_model: True
+  checkpoint_interval: 100
 snakepac:
   num_episodes: 1000
   num_episode_step: 20
