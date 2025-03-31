@@ -1,15 +1,17 @@
 environment: 'snakepac' # 'snakepac' or other when implemented
-logging: True
+logging: 
+  use_wandb: True
+  wandb_project: 'MuZero'
+  wandb_name: 'snakepac'
 
-load_model: True
+load_model: False
 save_model: True
 
 snakepac:
   num_episodes: 1000
   num_episode_step: 20
   training_interval: 50
-  num_simulations: 20
-  I_t: 10
+  buffer_size: 100
   batch_size: 32
   world_length: 8
   seed: 42
@@ -31,6 +33,9 @@ snakepac:
       activation: relu
     - type: linear
       in_features: 128
+      out_features: 128
+    - type: linear
+      in_features: 128
       out_features: 64
     - type: linear
       in_features: 64
@@ -41,6 +46,9 @@ snakepac:
         in_features: *hidden_size_snakepac
         out_features: 64
         activation: relu
+      - type: linear
+        in_features: 64
+        out_features: 64
       - type: linear
         in_features: 64
         out_features: 32
@@ -59,6 +67,9 @@ snakepac:
         in_features: 17 # &hidden_size_snakepac + 1 (action)
         out_features: 128
         activation: relu
+      - type: linear
+        in_features: 128
+        out_features: 128
       - type: linear
         in_features: 128
         out_features: 64
