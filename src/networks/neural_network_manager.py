@@ -103,7 +103,7 @@ class NeuralNetManager:
         value_seq = [step.value for step in batch[q + 1 :]]
 
         optimizer.zero_grad()
-        loss = torch.tensor(0, dtype=torch.float32)
+        loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
 
         targets = [(v, r, p) for v, r, p in zip(value_seq, reward_seq, policy_seq)]
 
@@ -119,15 +119,14 @@ class NeuralNetManager:
         )
         predictions = [(1.0, value, reward, policy_t)]
 
-        for action in action_seq:
+        for i, action in enumerate(action_seq):
             hidden_state, value, reward, _, policy_t = self.transition_and_evaluate(
                 hidden_state, action
             )
 
-            predictions.append((1.0 / len(action_seq), value, reward, policy_t))
+            predictions.append((1.0 / (np.log(i+2)+1), value, reward, policy_t))
 
-            hidden_state = self.__scale_gradient(hidden_state, 0.5)
-            hidden_state = self.__scale_gradient(hidden_state, 0.5)
+            #hidden_state = self.__scale_gradient(hidden_state, 0.5) Does this scaling make any sense? 
 
         for k, (prediction, target) in enumerate(zip(predictions, targets)):
             gradient_scale, value, reward, policy_t = prediction
@@ -145,9 +144,9 @@ class NeuralNetManager:
 
             l_loss = l_r + l_v + l_p
 
-            loss += self.__scale_gradient(l_loss, gradient_scale)
+            loss = loss + self.__scale_gradient(l_loss, gradient_scale)
 
-        loss /= len(predictions)
+        loss = loss / len(predictions)
 
         loss.backward()
         optimizer.step()
@@ -156,7 +155,7 @@ class NeuralNetManager:
 
     def __scale_gradient(self, tensor: torch.Tensor, scale: float) -> torch.Tensor:
         # Scales the gradient for the backward pass.
-        return tensor * scale + tensor.detach() * (1 - scale)
+        return tensor  + tensor.detach() * (1 - scale)
 
     def __loss_fn(
         self, value: torch.Tensor, target_value: torch.Tensor

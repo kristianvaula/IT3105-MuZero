@@ -64,7 +64,7 @@ snakepac:
 
     dynamics:
       - type: linear
-        in_features: 17 # &hidden_size_snakepac + 1 (action)
+        in_features: 33 # &hidden_size_snakepac + 1 (action)
         out_features: 128
         activation: relu
       - type: linear
