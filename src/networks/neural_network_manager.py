@@ -71,18 +71,28 @@ class NeuralNetManager:
             p for net in networks for p in net.get_parameters()
         ]  # TODO Check if it should be [net.get_parameters() for net in networks]
 
-    def bptt(self, buffer: EpisodeBuffer, q: int, K: int) -> torch.Tensor:
-        batch = buffer.sample_state(q, K)
+    def bptt(self, buffer: EpisodeBuffer, q: int, w: int, minibatch_size: int) -> torch.Tensor:
+        """
+        q: number of steps to look back (state window)
+        w: number of steps to look forward from 0
+        minibatch_size: number of episodes to sample
+        """
+        batch = buffer.sample(q, w, minibatch_size)
+        loss_history = []
+        lr_history = []
+        for episode in batch:
+            # TODO Get learning rates and weight decay from config
+            lr = self.__lr_decay()
+            #lr = 0.0
+            lr_history.append(lr)
 
-        # TODO Get learning rates and weight decay from config
-        lr = self.__lr_decay()
-        optimizer = torch.optim.Adam(self.get_weights(), lr=lr, weight_decay=1e-4)
+            optimizer = torch.optim.Adam(self.get_weights(), lr=lr, weight_decay=1e-4)
 
-        loss = self.__update_weights(batch, optimizer, q)
+            loss_history.append(self.__update_weights(episode, optimizer, q))
 
-        self.training_steps += 1
+            self.training_steps += 1
 
-        return loss
+        return loss_history, lr_history
 
     def __update_weights(
         self, batch: list[EpisodeStep], optimizer: torch.optim.Optimizer, q: int
@@ -126,7 +136,7 @@ class NeuralNetManager:
 
             predictions.append((1.0 / (np.log(i+2)+1), value, reward, policy_t))
 
-            #hidden_state = self.__scale_gradient(hidden_state, 0.5) Does this scaling make any sense? 
+            hidden_state = self.__scale_gradient(hidden_state, 0.5) # Does this scaling make any sense? 
 
         for k, (prediction, target) in enumerate(zip(predictions, targets)):
             gradient_scale, value, reward, policy_t = prediction
