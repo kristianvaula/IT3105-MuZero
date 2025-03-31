@@ -51,11 +51,16 @@ class ReinforcementLearningManager:
             config.environment.training_interval
         )  # It: training update interval
         self.minibatch_size = (
-            config.environment.batch_size
+            config.environment.minibatch_size
         )  # mbs: minibatch size for BPTT
         self.history_length = (
             config.networks.state_window
         )  # q: number of past states required for φₖ
+
+        self.roll_ahead = (
+            config.networks.roll_ahead
+        )
+        # w: number of steps to roll ahead in the environment
 
         self.use_wandb = (
             config.logging.use_wandb if hasattr(config.logging, "use_wandb") else False
@@ -71,7 +76,7 @@ class ReinforcementLearningManager:
         """
         Runs the full training loop and returns the trained NeuralNetManager (nnm).
         """
-
+        counter = 0
         best_reward = -float("inf")
         checkpoint_interval = (
             self.config.logging.checkpoint_interval
@@ -103,12 +108,11 @@ class ReinforcementLearningManager:
 
                 # Initialize u-Tree with abtract state σ₀ and run uMCTS
                 policy, root_value = self.monte_carlo.search(abstract_state)
-
                 # Sample action aₖ₊₁ from the policy πₖ
                 action = self._sample_action(policy)
 
                 # Simulate one timestep in the game: sₖ₊₁, rₖ₊₁
-                next_state, reward, done, terminated, info = self.env.step(action)
+                next_state, reward, done, terminated, _ = self.env.step(action)
 
                 episode_reward += reward
                 episode_steps += 1
@@ -116,9 +120,7 @@ class ReinforcementLearningManager:
                 # Save the training data for this step.
                 episode_data.add_step(
                     state=current_state,
-                    value=root_value.item()
-                    if hasattr(root_value, "item")
-                    else root_value,
+                    value=root_value.item(),
                     policy=list(policy.values()),
                     action=action,
                     reward=reward,
@@ -137,9 +139,7 @@ class ReinforcementLearningManager:
                         "episode": episode,
                         "episode_reward": episode_reward,
                         "episode_steps": episode_steps,
-                        "episode_value_estimate": root_value.item()
-                        if hasattr(root_value, "item")
-                        else root_value,
+                        "episode_final_step_value_estimate": root_value.item()
                     }
                 )
 
@@ -148,21 +148,28 @@ class ReinforcementLearningManager:
 
                 if episode_reward > best_reward:
                     best_reward = episode_reward
-                    self.save_checkpoint(f"{episode + 1}_best")
+                    if episode > 100:
+                        self.save_checkpoint(f"{episode + 1}_best")
 
             # Every training_interval episodes, perform BPTT training
             if (episode + 1) % self.training_interval == 0:
-                loss = self.nnm.bptt(self.episode_buffer, self.history_length, self.minibatch_size)
-                print(f"Episode {episode + 1} Loss: {loss}")
-
+                loss_history, lr_history = self.nnm.bptt(self.episode_buffer, self.history_length, self.roll_ahead, self.minibatch_size)
+                # loss is tensor so print as list of values
+                loss_history = loss_history.tolist() if isinstance(loss_history, torch.Tensor) else loss_history
+                lr_history = lr_history.tolist() if isinstance(lr_history, torch.Tensor) else lr_history
                 if self.use_wandb:
-                    wandb.log(
-                        {
-                            "training_loss": loss,
-                            "trained_episodes": episode + 1,
-                        }
-                    )
+                    for loss, lr in zip(loss_history, lr_history):
+                        counter +=1
+                        wandb.log({
+                            "training_step": counter,
+                            "loss": round(float(loss), 4),
+                            "learning_rate": round(float(lr), 4),
+                        })
+                
 
+
+                print(f"Episode {episode + 1} Loss: {[round(float(l), 4) for l in loss_history]}")
+                
         if self.use_wandb:
             wandb.finish()
 
