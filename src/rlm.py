@@ -168,7 +168,7 @@ class ReinforcementLearningManager:
                 
 
 
-                print(f"Episode {episode + 1} Loss: {[round(float(l), 4) for l in loss_history]}")
+                print(f"Episode {episode + 1} Loss: {[round(float(loss), 4) for loss in loss_history]}")
                 
         if self.use_wandb:
             wandb.finish()
