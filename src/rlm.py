@@ -251,7 +251,9 @@ class ReinforcementLearningManager:
         os.makedirs("checkpoints", exist_ok=True)
 
         checkpoint_path = f"checkpoints/model_ep{episode}.pt"
-        self.nnm.save(checkpoint_path)
+        self.nnm.representation.save_model()
+        self.nnm.dynamics.save_model()
+        self.nnm.prediction.save_model()
 
         if self.use_wandb:
             wandb.save(checkpoint_path)

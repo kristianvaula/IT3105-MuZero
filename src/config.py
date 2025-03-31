@@ -2,6 +2,14 @@ import yaml
 from pathlib import Path
 from dataclasses import dataclass
 
+@dataclass
+class LoggingConfig:
+    use_wandb: bool
+    wandb_project: str
+    wandb_name: str
+    load_model: bool
+    save_model: bool
+    checkpoint_interval: int
 
 @dataclass
 class NetworkConfig:
@@ -40,7 +48,7 @@ class Config:
         self.__config_data = self.__load_yaml(config_file)
 
         self.environment_name = self.__config_data["environment"]
-        self.logging = self.__config_data["logging"]
+        self.logging = LoggingConfig(**self.__config_data["logging_config"])
         self.load_model = self.__config_data["load_model"]
         self.save_model = self.__config_data["save_model"]
 
