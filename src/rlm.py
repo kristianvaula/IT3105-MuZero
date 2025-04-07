@@ -68,6 +68,7 @@ class ReinforcementLearningManager:
         if self.use_wandb:
             wandb.init(
                 project=config.logging.wandb_project,
+                entity="IT3105-muzero",
                 name=config.logging.wandb_name,
                 config=vars(config) if hasattr(config, "__dict__") else config,
             )
@@ -120,8 +121,8 @@ class ReinforcementLearningManager:
                 # Save the training data for this step.
                 episode_data.add_step(
                     state=current_state,
-                    value=root_value.item(),
-                    policy=list(policy.values()),
+                    value=root_value.item(), # TODO: Incorrect Target Value Calculation?
+                    policy=list(policy.values()), 
                     action=action,
                     reward=reward,
                 )
@@ -153,6 +154,8 @@ class ReinforcementLearningManager:
 
             # Every training_interval episodes, perform BPTT training
             if (episode + 1) % self.training_interval == 0:
+                # TODO: Networks are only trained every training_interval episodes:
+                # This might be too infrequent for efficient learning, depending on your specific environment.
                 loss_history, lr_history = self.nnm.bptt(self.episode_buffer, self.history_length, self.roll_ahead, self.minibatch_size)
                 # loss is tensor so print as list of values
                 loss_history = loss_history.tolist() if isinstance(loss_history, torch.Tensor) else loss_history
@@ -212,6 +215,7 @@ class ReinforcementLearningManager:
 
                 # Run u-MCTS starting from the abstract state.
                 policy, root_value = self.monte_carlo.search(abstract_state)
+                print(policy)
 
                 # Sample the next action from the computed policy.
                 action = self._sample_action(policy)
@@ -222,9 +226,12 @@ class ReinforcementLearningManager:
 
                 # Optionally render the environment.
                 if hasattr(self.env, "render"):
-                    self.env.render()
+                    
+                    self.env.render(reward=reward==1)
 
             print("Episode finished!")
+
+
 
     def _get_phi_k(self, state_history, action_history):
         """

@@ -2,6 +2,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from typing import List
+from src.networks.neural_network import RepresentationNetwork
+from src.networks.neural_network import DynamicsNetwork
+from src.networks.neural_network import PredictionNetwork
+
 
 from src.storage.episode_buffer import EpisodeBuffer, EpisodeStep
 
@@ -9,9 +13,9 @@ from src.storage.episode_buffer import EpisodeBuffer, EpisodeStep
 class NeuralNetManager:
     def __init__(
         self,
-        representation: nn.Module,
-        dynamics: nn.Module,
-        prediction: nn.Module,
+        representation: RepresentationNetwork,
+        dynamics: DynamicsNetwork,
+        prediction: PredictionNetwork,
         learning_rate=0.01,
     ):
         self.representation = representation
@@ -24,12 +28,44 @@ class NeuralNetManager:
         return self.representation(input)
 
     def NNd(self, state, action):
+        """
+        Dynamics network: predicts next state and reward given current state and action.
+        
+        Args:
+            state: Current abstract state representation (tensor)
+            action: Action to take (integer)
+            
+        Returns:
+            Tuple of (next_state, reward)
+        # Convert action to tensor if it's not already
+        if not isinstance(action, torch.Tensor):
+            action = torch.tensor([action], dtype=torch.float32)
+        
+        # Handle different input shapes
+        if len(state.shape) == 0:  # Scalar tensor
+            state = state.unsqueeze(0)
+        
+        # Ensure action has the right shape for concatenation
+        if action.dim() < state.dim():
+            action = action.unsqueeze(0)
+        
+        # Concatenate state and action
+        combined_input = torch.cat((state, action), dim=-1)
+        
+        # Use the dynamics network which should return both next_state and reward
+        return self.dynamics(combined_input)
+
+        # TODO: REVERT TO OLD NNd CODE IF EDVARD FUCKS UP
+        """
+        
+        # TODO: The dynamics network only handles linear layers as the first layer: 
         # check if first layer is linear
         if isinstance(self.dynamics.network[0], nn.Linear):
             action = torch.tensor([action], dtype=torch.float32)
             return self.dynamics(torch.cat((state, action), dim=0))
         else:
             raise NotImplementedError("woopsies, ahead of your time")
+
 
     def NNp(self, state):
         return self.prediction(state)
@@ -52,6 +88,18 @@ class NeuralNetManager:
         return hidden_state, value, reward, [p for p in policy_p], policy
 
     def transition_and_evaluate(self, hidden_state, action):
+        """
+        Transition from current hidden state to next hidden state using action,
+        then evaluate the new state.
+        # Get next state and reward from dynamics network
+        next_hidden_state, reward = self.NNd(hidden_state, action)
+        
+        # Evaluate the new state with prediction network
+        policy, value = self.NNp(next_hidden_state)
+        
+        return next_hidden_state, value, reward, policy, policy
+        # TODO: REVERT TO OLD transition_and_evaluate CODE IF EDVARD FUCKS UP
+        """
         # Transition hidden state with action
         action_tensor = torch.tensor([action], dtype=torch.float32)
         next_hidden_state, reward = self.dynamics(
@@ -78,16 +126,13 @@ class NeuralNetManager:
         minibatch_size: number of episodes to sample
         """
         batch = buffer.sample(q, w, minibatch_size)
+        lr = self.__lr_decay()
+        optimizer = torch.optim.Adam(self.get_weights(), lr=lr, weight_decay=1e-4)
+
         loss_history = []
-        lr_history = []
+        lr_history = [lr] * len(batch)
         for episode in batch:
             # TODO Get learning rates and weight decay from config
-            lr = self.__lr_decay()
-            #lr = 0.0
-            lr_history.append(lr)
-
-            optimizer = torch.optim.Adam(self.get_weights(), lr=lr, weight_decay=1e-4)
-
             loss_history.append(self.__update_weights(episode, optimizer, q))
 
             self.training_steps += 1
@@ -99,7 +144,7 @@ class NeuralNetManager:
     ) -> torch.Tensor:
         # Assume network is an instance of your MuZero network with proper submodules.
         # optimizer is a PyTorch optimizer, e.g., torch.optim.SGD or Adam.
-        # optimizer.zero_grad()  # Clear gradients
+        optimizer.zero_grad()  # Clear gradients
 
         # Translate to hidden state
         state_seq = np.array([step.state for step in batch[0:q]], dtype=np.float32)
@@ -112,7 +157,6 @@ class NeuralNetManager:
         reward_seq = [step.reward for step in batch[q + 1 :]]
         value_seq = [step.value for step in batch[q + 1 :]]
 
-        optimizer.zero_grad()
         loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
 
         targets = [(v, r, p) for v, r, p in zip(value_seq, reward_seq, policy_seq)]
@@ -165,7 +209,7 @@ class NeuralNetManager:
 
     def __scale_gradient(self, tensor: torch.Tensor, scale: float) -> torch.Tensor:
         # Scales the gradient for the backward pass.
-        return tensor  + tensor.detach() * (1 - scale)
+        return tensor * scale  + tensor.detach() * (1 - scale)
 
     def __loss_fn(
         self, value: torch.Tensor, target_value: torch.Tensor
@@ -176,6 +220,6 @@ class NeuralNetManager:
     def __policy_loss_fn(
         self, policy_logits: torch.Tensor, target_policy: torch.Tensor
     ) -> torch.Tensor:
-        # loss_fn = torch.nn.CrossEntropyLoss() TODO Check if this should be CrossEntropyLoss
+        # loss_fn = torch.nn.CrossEntropyLoss() # TODO Check if this should be CrossEntropyLoss, according to perplexity: In the original MuZero paper, CrossEntropyLoss is typically used for policy loss, not KLDivLoss
         loss_fn = torch.nn.KLDivLoss(reduction="batchmean")
         return loss_fn(torch.log(policy_logits + 1e-8), target_policy)

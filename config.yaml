@@ -8,17 +8,17 @@ logging_config:
   checkpoint_interval: 100
 
 snakepac:
-  num_episodes: 1000 # How many episodes to train the model 
-  num_episode_step: 20 # How many steps to take in each episode 
-  training_interval: 50 # How often to train the model 
+  num_episodes: 10 # How many episodes to train the model 
+  num_episode_step: 50 # How many steps to take in each episode 
+  training_interval: 10 # How often to train the model, I_t: training interval for the three neural networks
   buffer_size: 75  # How many episodes to store in the buffer 
   minibatch_size: 25   # Parameter K in the bptt, how many episodes to unroll from the buffer
-  world_length: 8
+  world_length: 4
   seed: 42
-  action_space: &action_size_snakepac 3
+  action_space: &action_size_snakepac 3 # complete set of actions
   uMCTS:
-    num_searches: 20
-    max_depth: 12
+    num_searches: 50
+    max_depth: 12 # maximum depth of in a u-mcts search
     ucb_constant: 1.0
     discount_factor: 0.90
   
@@ -26,52 +26,55 @@ snakepac:
     iteration: ""
     state_window: 1 # How many episodes we use to compute initial abstract state 
     roll_ahead: 17 # How many steps we use to compute the next state
-    hidden_state_size: &hidden_size_snakepac 32
+    hidden_state_size: &hidden_size_snakepac 8
     representation:
     - type: linear
-      in_features: 9 # World length * state_window + state_window (corresponding actions)
-      out_features: 128
+      in_features: 5 # World length * state_window + state_window (corresponding actions)
+      out_features: 32
       activation: relu
     - type: linear
-      in_features: 128
-      out_features: 64
+      in_features: 32
+      out_features: 32
+      activation: relu
     - type: linear
-      in_features: 64
+      in_features: 32
       out_features: *hidden_size_snakepac
 
     prediction:
       - type: linear
         in_features: *hidden_size_snakepac
-        out_features: 64
+        out_features: 32
         activation: relu
       - type: linear
-        in_features: 64
-        out_features: 32
+        in_features: 32
+        out_features: 16
+        activation: relu
       # second to last layer is the policy layer
       - type: linear
-        in_features: 32
+        in_features: 16
         out_features: *action_size_snakepac
         activation: softmax
       # last layer is the value layer
       - type: linear
-        in_features: 32
+        in_features: 16
         out_features: 1
 
     dynamics:
       - type: linear
-        in_features: 33 # &hidden_size_snakepac + 1 (action)
-        out_features: 128
+        in_features: 9 # &hidden_size_snakepac + 1 (action)
+        out_features: 32
         activation: relu
       - type: linear
-        in_features: 128
-        out_features: 64
+        in_features: 32
+        out_features: 32
+        activation: relu
       # second to last layer is the hidden state layer
       - type: linear
-        in_features: 64
+        in_features: 32
         out_features: *hidden_size_snakepac
       # last layer is the reward layer
       - type: linear
-        in_features: 64
+        in_features: 32
         out_features: 1
 
 
@@ -91,34 +94,34 @@ riverraid:
     ucb_constant: 1.0
     discount_factor: 0.95
 
-logging:
-
-network:
-  # for snakepac
-  iteration: ""
-  representation:
-  - type: linear
-    in_features: "" # Will be set by the environment
-    out_features: 
-    activation: relu
-  - type: linear
-    in_features: 128
-    out_features: 64
-
-  prediction:
+  network:
+    # for riverraid
+    iteration: ""
+    representation:
     - type: linear
-      in_features: 64
-      out_features: 64
-      activation: relu
-    - type: linear
-      in_features: 64
-      out_features: 10
-
-  dynamics:
-    - type: linear
-      in_features: 68
-      out_features: 128
+      in_features: "" # Will be set by the environment
+      out_features: 
       activation: relu
     - type: linear
       in_features: 128
       out_features: 64
+
+    prediction:
+      - type: linear
+        in_features: 64
+        out_features: 64
+        activation: relu
+      - type: linear
+        in_features: 64
+        out_features: 10
+
+    dynamics:
+      - type: linear
+        in_features: 68
+        out_features: 128
+        activation: relu
+      - type: linear
+        in_features: 128
+        out_features: 64
+
+logging:

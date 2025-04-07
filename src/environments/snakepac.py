@@ -39,11 +39,11 @@ class SnakePacEnv(gym.Env):
         #   self.coin_pos = self.np_random.integers(0, self.world_length)
 
         self.coin_pos = 0
-
+        self.user_pos = self.world_length - 1
         # spawm the coin at the same pos, but not the user
-        self.user_pos = self.np_random.integers(0, self.world_length)
-        while self.coin_pos == self.user_pos:
-           self.user_pos = self.np_random.integers(0, self.world_length)
+        #self.user_pos = self.np_random.integers(0, self.world_length)
+        #while self.coin_pos == self.user_pos:
+        #   self.user_pos = self.np_random.integers(0, self.world_length)
 
 
         return self._get_obs(), {}
@@ -76,6 +76,8 @@ class SnakePacEnv(gym.Env):
             reward -= 0.2  # Penalty for moving away.
         # If new_distance == prev_distance, no shaping reward is given.
         
+        # reward = 0
+        # obs = self._get_obs()
         # Check if the user lands on the coin.
         if self.user_pos == self.coin_pos:
             reward = 1  # Main reward for collecting the coin.
@@ -86,11 +88,13 @@ class SnakePacEnv(gym.Env):
         # Gymnasium's step should return: observation, reward, terminated, truncated, info.
         return self._get_obs(), reward, done, False, info
 
-    def render(self, mode="human"):
+    def render(self, mode="human", reward=False):
         world = np.full(self.world_length, " . ")
         world[self.user_pos] = " U "
         world[self.coin_pos] = " C "
-        print("".join(world))
+        state = "".join(world)
+        state = state + "+1" if reward else state
+        print(state)
 
     def _get_obs(self):
         obs = np.zeros(self.world_length, dtype=np.int32)
