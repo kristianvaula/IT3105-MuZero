@@ -9,6 +9,10 @@ from src.networks.neural_network import (
 )
 from src.networks.neural_network_manager import NeuralNetManager
 from src.rlm import ReinforcementLearningManager
+import gymnasium as gym
+import ale_py
+gym.register_envs(ale_py)
+
 
 """ Important parameters 
 
@@ -95,6 +99,12 @@ class MuZero:
 
             env = SnakePacEnv(config.environment.world_length, config.environment.seed)
             gsm = SnakePacGSM(env)
+        elif config.environment_name == "riverraid":
+            from .gsm.riverraid_gsm import RiverraidGSM
+
+            env = gym.make("ALE/Riverraid-v5")
+            env.reset(seed=config.environment.seed)
+            gsm = RiverraidGSM(env)
         else:
             raise ValueError(f"Invalid environment: {config.environment}")
 
@@ -109,11 +119,11 @@ def main():
     muzero = MuZero(config)
 
     # Run training loop
-    muzero.run_training()
-    if config.logging.save_model:
-        muzero.save_models()
+    #muzero.run_training()
+    #if config.logging.save_model:
+    #    muzero.save_models()
 
-    muzero.rlm.play(5)
+    #muzero.rlm.play(5)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
 import gymnasium as gym
+import ale_py
 
 # Create the River Raid environment
-env = gym.make("ALE/Riverraid-v5", render_mode="human")
+gym.register_envs(ale_py)
+env = gym.make("ALE/Riverraid-v5")
 
 # Reset the environment
 obs, info = env.reset()
