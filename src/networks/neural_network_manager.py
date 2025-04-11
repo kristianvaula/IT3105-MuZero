@@ -26,7 +26,7 @@ class NeuralNetManager:
 
     def NNr(self, input):
         return self.representation(input)
-
+    
     def NNd(self, state, action):
         """
         Dynamics network: predicts next state and reward given current state and action.
@@ -60,11 +60,11 @@ class NeuralNetManager:
         
         # TODO: The dynamics network only handles linear layers as the first layer: 
         # check if first layer is linear
-        if isinstance(self.dynamics.network[0], nn.Linear):
-            action = torch.tensor([action], dtype=torch.float32)
-            return self.dynamics(torch.cat((state, action), dim=0))
-        else:
-            raise NotImplementedError("woopsies, ahead of your time")
+        if not isinstance(action, torch.Tensor):
+            action = torch.tensor([action], dtype=torch.long)
+        # Call the dynamics network with the current hidden state and the action.
+        next_hidden_state, reward = self.dynamics(state, action)
+        return next_hidden_state, reward
 
 
     def NNp(self, state):
@@ -74,50 +74,40 @@ class NeuralNetManager:
         return self.learning_rate * decay_rate**self.training_steps
 
     def translate_and_evaluate(self, game_state):
-        # Translate game state to hidden state
+        """
+        Given the raw game state (an image tensor of shape (C, H, W)),
+        first ensure it has a batch dimension, then produce its corresponding
+        hidden representation, policy logits, and value estimate.
+        Initial reward is always set to zero.
+        """
+        if not isinstance(game_state, torch.Tensor):
+            game_state = torch.tensor(game_state, dtype=torch.float32)
+        # Add batch dimension if missing.
+        if game_state.dim() == 3:
+            game_state = game_state.unsqueeze(0)
+
         hidden_state = self.representation(game_state)
-
-        # Evaluate hidden state
-        policy, value = self.prediction(hidden_state)
-
-        # Only translate, so reward is 0 (tensor)
+        policy_logits, value = self.prediction(hidden_state)
         reward = torch.tensor([0], dtype=torch.float32)
-
-        policy_p = policy
-
-        return hidden_state, value, reward, [p for p in policy_p], policy
+        policy = torch.softmax(policy_logits, dim=-1)
+        return hidden_state, value, reward, policy_logits, policy
 
     def transition_and_evaluate(self, hidden_state, action):
         """
-        Transition from current hidden state to next hidden state using action,
-        then evaluate the new state.
-        # Get next state and reward from dynamics network
-        next_hidden_state, reward = self.NNd(hidden_state, action)
-        
-        # Evaluate the new state with prediction network
-        policy, value = self.NNp(next_hidden_state)
-        
-        return next_hidden_state, value, reward, policy, policy
-        # TODO: REVERT TO OLD transition_and_evaluate CODE IF EDVARD FUCKS UP
+        Given the current hidden state and an action, use the dynamics network to get the next hidden state
+        and reward, and then evaluate the new hidden state with the prediction network.
         """
-        # Transition hidden state with action
-        action_tensor = torch.tensor([action], dtype=torch.float32)
-        next_hidden_state, reward = self.dynamics(
-            torch.cat((hidden_state.squeeze(), action_tensor), dim=0)
-        )
+        if not isinstance(action, torch.Tensor):
+            action = torch.tensor([action], dtype=torch.long)
+        next_hidden_state, reward = self.dynamics(hidden_state, action)
+        policy_logits, value = self.prediction(next_hidden_state)
+        policy = torch.softmax(policy_logits, dim=-1)
+        return next_hidden_state, value, reward, policy_logits, policy
 
-        # Evaluate hidden state
-        policy, value = self.prediction(next_hidden_state)
-
-        policy_p = policy[0]
-
-        return next_hidden_state, value, reward, policy_p, policy
-
-    def get_weights(self) -> List[List[torch.Tensor]]:
+    def get_weights(self) -> List[torch.Tensor]:
         networks = [self.representation, self.dynamics, self.prediction]
-        return [
-            p for net in networks for p in net.get_parameters()
-        ]  # TODO Check if it should be [net.get_parameters() for net in networks]
+        # Each network is assumed to have a method get_parameters() that returns its parameters.
+        return [p for net in networks for p in net.get_parameters()]
 
     def bptt(self, buffer: EpisodeBuffer, q: int, w: int, minibatch_size: int) -> torch.Tensor:
         """
@@ -132,9 +122,7 @@ class NeuralNetManager:
         loss_history = []
         lr_history = [lr] * len(batch)
         for episode in batch:
-            # TODO Get learning rates and weight decay from config
             loss_history.append(self.__update_weights(episode, optimizer, q))
-
             self.training_steps += 1
 
         return loss_history, lr_history
@@ -142,84 +130,69 @@ class NeuralNetManager:
     def __update_weights(
         self, batch: list[EpisodeStep], optimizer: torch.optim.Optimizer, q: int
     ) -> torch.Tensor:
-        # Assume network is an instance of your MuZero network with proper submodules.
-        # optimizer is a PyTorch optimizer, e.g., torch.optim.SGD or Adam.
         optimizer.zero_grad()  # Clear gradients
 
-        # Translate to hidden state
+        # For Atari, we take the state from the last element in the history window.
         state_seq = np.array([step.state for step in batch[0:q]], dtype=np.float32)
-        prev_action_seq = np.array(
-            [step.action for step in batch[0:q]], dtype=np.float32
-        )
+        # For actions, assume we store them as integers.
+        prev_action_seq = np.array([step.action for step in batch[0:q]], dtype=np.float32)
 
-        action_seq = [step.action for step in batch[q + 1 :]]
-        policy_seq = [step.policy for step in batch[q + 1 :]]
-        reward_seq = [step.reward for step in batch[q + 1 :]]
-        value_seq = [step.value for step in batch[q + 1 :]]
+        action_seq = [step.action for step in batch[q + 1:]]
+        policy_seq = [step.policy for step in batch[q + 1:]]
+        reward_seq = [step.reward for step in batch[q + 1:]]
+        value_seq = [step.value for step in batch[q + 1:]]
 
         loss = torch.tensor(0, dtype=torch.float32, requires_grad=True)
-
         targets = [(v, r, p) for v, r, p in zip(value_seq, reward_seq, policy_seq)]
 
         # --- Initial Inference Step ---
-        # Forward pass for the initial observation.
-        state_tensor = torch.tensor(state_seq, dtype=torch.float32)
-        action_tensor = torch.tensor(prev_action_seq, dtype=torch.float32).unsqueeze(-1)
-        representation_input = torch.cat([state_tensor, action_tensor], dim=-1)
-        representation_input = representation_input.squeeze()
+        # Use only the most recent state in the history. For Atari, that state is an image.
+        state_tensor = torch.tensor(state_seq[-1], dtype=torch.float32).unsqueeze(0)
+        hidden_state, value, reward, _, policy_logits = self.translate_and_evaluate(state_tensor)
+        # Save the prediction along with an initial gradient scale of 1.0.
+        predictions = [(1.0, value, reward, policy_logits)]
 
-        hidden_state, value, reward, _, policy_t = self.translate_and_evaluate(
-            representation_input
-        )
-        predictions = [(1.0, value, reward, policy_t)]
-
+        # Unroll the rollout using actions in action_seq.
         for i, action in enumerate(action_seq):
-            hidden_state, value, reward, _, policy_t = self.transition_and_evaluate(
+            hidden_state, value, reward, policy_logits, _ = self.transition_and_evaluate(
                 hidden_state, action
             )
+            gradient_scale = 1.0 / (np.log(i + 2) + 1)  # Weight decays with unroll length.
+            predictions.append((gradient_scale, value, reward, policy_logits))
+            # Optionally scale gradients in the hidden state to control the impact of long unrolls.
+            hidden_state = self.__scale_gradient(hidden_state, 0.5)
 
-            predictions.append((1.0 / (np.log(i+2)+1), value, reward, policy_t))
-
-            hidden_state = self.__scale_gradient(hidden_state, 0.5) # Does this scaling make any sense? 
-
+        # Compute loss from predictions vs. targets.
         for k, (prediction, target) in enumerate(zip(predictions, targets)):
-            gradient_scale, value, reward, policy_t = prediction
+            gradient_scale, value, reward, policy_logits = prediction
             target_value, target_reward, target_policy = target
 
             target_value = torch.tensor(target_value, dtype=torch.float32).unsqueeze(0)
-            target_reward = torch.tensor(target_reward, dtype=torch.float32).unsqueeze(
-                0
-            )
+            target_reward = torch.tensor(target_reward, dtype=torch.float32).unsqueeze(0)
             target_policy = torch.tensor(target_policy, dtype=torch.float32)
 
             l_v = self.__loss_fn(value, target_value)
             l_r = self.__loss_fn(reward, target_reward) if k > 0 else 0
-            l_p = self.__policy_loss_fn(policy_t, target_policy) if k > 0 else 0
+            l_p = self.__policy_loss_fn(policy_logits, target_policy) if k > 0 else 0
 
-            l_loss = l_r + l_v + l_p
-
+            l_loss = l_v + l_r + l_p
             loss = loss + self.__scale_gradient(l_loss, gradient_scale)
 
         loss = loss / len(predictions)
-
         loss.backward()
         optimizer.step()
 
         return loss
 
     def __scale_gradient(self, tensor: torch.Tensor, scale: float) -> torch.Tensor:
-        # Scales the gradient for the backward pass.
-        return tensor * scale  + tensor.detach() * (1 - scale)
+        # Scales the gradient flowing backwards.
+        return tensor * scale + tensor.detach() * (1 - scale)
 
-    def __loss_fn(
-        self, value: torch.Tensor, target_value: torch.Tensor
-    ) -> torch.Tensor:
-        loss_fn = torch.nn.MSELoss()
-        return loss_fn(value, target_value)
+    def __loss_fn(self, value: torch.Tensor, target_value: torch.Tensor) -> torch.Tensor:
+        return nn.MSELoss()(value, target_value)
 
     def __policy_loss_fn(
         self, policy_logits: torch.Tensor, target_policy: torch.Tensor
     ) -> torch.Tensor:
-        # loss_fn = torch.nn.CrossEntropyLoss() # TODO Check if this should be CrossEntropyLoss, according to perplexity: In the original MuZero paper, CrossEntropyLoss is typically used for policy loss, not KLDivLoss
-        loss_fn = torch.nn.KLDivLoss(reduction="batchmean")
-        return loss_fn(torch.log(policy_logits + 1e-8), target_policy)
+        log_probs = torch.log_softmax(policy_logits, dim=-1)
+        return nn.functional.kl_div(log_probs, target_policy, reduction="batchmean")

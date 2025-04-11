@@ -129,9 +129,15 @@ class DynamicsNetwork(NeuralNetwork):
         self.state_head = build_head(head_layers[0])
         self.reward_head = build_head(head_layers[1])
 
-    def __call__(self, x, **kwargs):
-        input = self.preprocess(x)
-        hidden_activation = self.forward(input)
+    def __call__(self, hidden_state, action=None):
+        if action is not None:
+            # Here you may adapt the fusion scheme.
+            # For example, if hidden_state is (B, C, H, W) and action is already a tensor of shape (B, A, H, W)
+            # then concatenate along channel dimension:
+            x = torch.cat((hidden_state, action), dim=1)
+        else:
+            x = hidden_state
+        hidden_activation = self.forward(x)
         return self.postprocess(hidden_activation)
 
     def save_model(

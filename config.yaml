@@ -98,6 +98,7 @@ riverraid:
 
   network:
     iteration: ""
+    state_window: 32
     
     # -----------------------------------------------------------------------------
     # Representation Network

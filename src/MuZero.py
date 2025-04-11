@@ -119,11 +119,11 @@ def main():
     muzero = MuZero(config)
 
     # Run training loop
-    #muzero.run_training()
-    #if config.logging.save_model:
-    #    muzero.save_models()
+    muzero.run_training()
+    if config.logging.save_model:
+        muzero.save_models()
 
-    #muzero.rlm.play(5)
+    muzero.rlm.play(5)
 
 
 if __name__ == "__main__":
