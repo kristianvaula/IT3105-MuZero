@@ -1,8 +1,8 @@
-environment: 'snakepac' # 'snakepac' or other when implemented
+environment: 'riverraid' # 'snakepac' or other when implemented
 logging_config: 
   use_wandb: True
   wandb_project: 'MuZero'
-  wandb_name: 'snakepac'
+  wandb_name: 'riverraid'
   load_model: False
   save_model: True
   checkpoint_interval: 100
@@ -81,47 +81,126 @@ snakepac:
   
 
 riverraid:
-  num_episodes: 100
-  num_simulations: 100
-  training_interval: 10
-  batch_size: 32
-
-  skip_frames: 4
-  action_frames: 4
+  seed: 42
+  num_episodes: 1000         # total training episodes
+  num_episode_step: 100       # simulations per move (affects uMCTS)
+  training_interval: 20      # how often to update networks
+  buffer_size: 20            # size of the replay buffer
+  minibatch_size: 32             # minibatch size for training
+  skip_frames: 4             # common Atari frame skipping
+  action_frames: 4           # number of frames representing a single action
+  
   mcts:
-    num_searches: 50
-    max_depth: 10
+    num_searches: 100        # number of searches in uMCTS per move
+    max_depth: 15            # maximum rollout depth
     ucb_constant: 1.0
-    discount_factor: 0.95
+    discount_factor: 0.99
 
   network:
-    # for riverraid
     iteration: ""
+    
+    # -----------------------------------------------------------------------------
+    # Representation Network
+    # -----------------------------------------------------------------------------
+    # Input: 32 RGB frames (96x96) + 32 corresponding action bias planes 
+    # gives an effective input with 32*3 + 32 = 128 channels.
+    # This module downscales the input to a hidden state of shape (256, 6, 6)
     representation:
-    - type: linear
-      in_features: "" # Will be set by the environment
-      out_features: 
+    - type: conv2d
+      in_channels: 128
+      out_channels: 128
+      kernel_size: 3
+      stride: 2
+      padding: 1
       activation: relu
-    - type: linear
-      in_features: 128
-      out_features: 64
+    - type: residual_block
+      channels: 128
+      kernel_size: 3
+      repeats: 2
+      activation: relu
+    - type: conv2d
+      in_channels: 128
+      out_channels: 256
+      kernel_size: 3
+      stride: 2
+      padding: 1
+      activation: relu
+    - type: residual_block
+      channels: 256
+      kernel_size: 3
+      repeats: 3
+      activation: relu
+    - type: avg_pool2d
+      kernel_size: 2
+      stride: 2
+    - type: residual_block
+      channels: 256
+      kernel_size: 3
+      repeats: 3
+      activation: relu
+    - type: avg_pool2d
+      kernel_size: 2
+      stride: 2
+    # Final resolution: (256 channels, 6x6 spatial)
 
+    # -----------------------------------------------------------------------------
+    # Prediction Network
+    # -----------------------------------------------------------------------------
+    # Takes the 6x6 hidden state and produces:
+    # • A policy head: probability distribution over 18 discrete actions.
+    # • A value head: estimated value.
     prediction:
-      - type: linear
-        in_features: 64
-        out_features: 64
-        activation: relu
-      - type: linear
-        in_features: 64
-        out_features: 10
+    - type: conv2d
+      in_channels: 256
+      out_channels: 64
+      kernel_size: 3
+      stride: 1
+      padding: 1
+      activation: relu
+    - type: flatten
+    - type: linear
+      # 6*6*64 = 2304 features
+      in_features: 2304
+      out_features: 18      # action space for Atari (18 possible discrete actions)
+      activation: softmax
+    - type: linear
+      in_features: 2304
+      out_features: 1       # scalar value output
 
+    # -----------------------------------------------------------------------------
+    # Dynamics Network
+    # -----------------------------------------------------------------------------
+    # This network takes the current hidden state from the representation (size: 256,6,6)
+    # concatenated with an encoded action. For Atari, actions are one-hot encoded into
+    # 18 channels and tiled to match the spatial resolution (6x6), giving a total of 256+18=274 channels.
     dynamics:
-      - type: linear
-        in_features: 68
-        out_features: 128
-        activation: relu
-      - type: linear
-        in_features: 128
-        out_features: 64
-
-logging:
+    - type: concat   # Concatenate hidden state and action encoding along channel dimension.
+      sources: ["hidden_state", "action_encoding"]
+    - type: conv2d
+      in_channels: 274
+      out_channels: 256
+      kernel_size: 3
+      stride: 1
+      padding: 1
+      activation: relu
+    - type: residual_block
+      channels: 256
+      kernel_size: 3
+      repeats: 2
+      activation: relu
+    - type: conv2d
+      in_channels: 256
+      out_channels: 256
+      kernel_size: 3
+      stride: 1
+      padding: 1
+      activation: relu
+    # Hidden state head: outputs the new hidden state with shape (256,6,6)
+    - type: identity_head
+    # Reward head: predicts a scalar reward.
+    - type: conv2d
+      in_channels: 256
+      out_channels: 1
+      kernel_size: 3
+      stride: 1
+      padding: 1
