@@ -70,6 +70,7 @@ class NetworkBuilder:
         Build a layer from a configuration.
         """
         layer_type = layer_config["type"]
+        
         layers = []
         # For some types the 'activation' is built-in to the layer itself (e.g., residual_block)
         if layer_type == "linear":

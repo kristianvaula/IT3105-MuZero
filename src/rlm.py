@@ -105,7 +105,7 @@ class ReinforcementLearningManager:
                 abstract_state, _, _, _, _ = self.nnm.translate_and_evaluate(
                     phi_k_tensor
                 )
-
+                
                 # Initialize u-Tree with abtract state σ₀ and run uMCTS
                 policy, root_value = self.monte_carlo.search(abstract_state)
                 # Sample action aₖ₊₁ from the policy πₖ
@@ -148,7 +148,7 @@ class ReinforcementLearningManager:
 
                 if episode_reward > best_reward:
                     best_reward = episode_reward
-                    if episode > 100:
+                    if episode % 10:
                         self.save_checkpoint(f"{episode + 1}_best")
 
             # Every training_interval episodes, perform BPTT training

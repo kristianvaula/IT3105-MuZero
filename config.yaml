@@ -1,6 +1,6 @@
 environment: 'riverraid' # 'snakepac' or other when implemented
 logging_config: 
-  use_wandb: False
+  use_wandb: True
   wandb_project: 'MuZero'
   wandb_name: 'riverraid'
   load_model: False
@@ -205,3 +205,7 @@ riverraid:
       kernel_size: 3
       stride: 1
       padding: 1
+    - type: flatten
+    - type: linear
+      in_features: 36
+      out_features: 1 

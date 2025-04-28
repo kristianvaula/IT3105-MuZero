@@ -102,6 +102,7 @@ class uMCTS:
 
         for _, child in node.children.items():
             c = self.ucb_constant
+            
             # Calculte Upper Confidence Bound score
             score = child.q_value + c * child.prior * math.sqrt(
                 math.log(node.visit_count) / (1 + child.visit_count) 
@@ -128,11 +129,13 @@ class uMCTS:
         """
         actions = self.action_space.n
         policy, _ = self.nnm.NNp(node.state)
+        policy = policy.squeeze(0)  # Remove batch dimension
 
         for action in range(actions):
             if action not in node.children:
                 next_state, predicted_reward = self.nnm.NNd(node.state, action)
-                child_node = Node(next_state, policy[action], parent=node)
+                prior = policy[action].item()
+                child_node = Node(next_state, prior, parent=node)
                 child_node.reward = predicted_reward
                 node.children[action] = child_node
 

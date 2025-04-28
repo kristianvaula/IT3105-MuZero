@@ -4,8 +4,15 @@ import os
 
 
 def build_head(head_config):
-    layers = NetworkBuilder([head_config]).build_layer(head_config)
-    return torch.nn.Sequential(*layers) if len(layers) > 1 else layers[0]
+    if type(head_config) is list:
+        layers = []
+        for config in head_config:
+            if config is not None:
+                layers.append(NetworkBuilder([config]).build_layer(config)[0])
+    else:
+        layers = NetworkBuilder([head_config]).build_layer(head_config)
+        
+    return torch.nn.Sequential(*layers) 
 
 
 class NeuralNetwork:
@@ -120,24 +127,42 @@ class RepresentationNetwork(NeuralNetwork):
         hidden_activation = self.forward(x)
         return self.postprocess(hidden_activation)
 
-
 class DynamicsNetwork(NeuralNetwork):
-    def __init__(self, layer_configs, device, build=True):
-        head_layers = layer_configs[-2:]
-        build_layers = layer_configs[:-2]
+    def __init__(self, layer_configs, device, action_space=18, build=True):
+        head_layers = layer_configs[-4:]
+        build_layers = layer_configs[:-4]
         super().__init__(build_layers, device, build)
         self.state_head = build_head(head_layers[0])
-        self.reward_head = build_head(head_layers[1])
+        self.reward_head = build_head(head_layers[1:])
+        self.num_actions = action_space
 
     def __call__(self, hidden_state, action=None):
         if action is not None:
             # Here you may adapt the fusion scheme.
-            # For example, if hidden_state is (B, C, H, W) and action is already a tensor of shape (B, A, H, W)
+            # Hidden state is (B, C, H, W) and action is (B)
             # then concatenate along channel dimension:
-            x = torch.cat((hidden_state, action), dim=1)
+            
+            B, C, H, W = hidden_state.shape
+
+            # 1. One-hot encode the action
+            action_onehot = torch.nn.functional.one_hot(action, num_classes=self.num_actions)  # (B, num_actions)
+
+            # 2. Convert to float and add spatial dims
+            action_onehot = action_onehot.view(B, self.num_actions, 1, 1).float()  # (B, num_actions, 1, 1)
+
+            # 3. Expand to match spatial dims
+            action_tensor = action_onehot.expand(-1, -1, H, W)  # (B, num_actions, H, W)
+
+            # 4. Concatenate
+            x = torch.cat((hidden_state, action_tensor), dim=1)
         else:
             x = hidden_state
+            
+
+        # 4) forward through your conv trunk:
         hidden_activation = self.forward(x)
+
+        # 5) split off next-state & reward:
         return self.postprocess(hidden_activation)
 
     def save_model(
