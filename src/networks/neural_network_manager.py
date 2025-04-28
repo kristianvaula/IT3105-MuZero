@@ -135,7 +135,8 @@ class NeuralNetManager:
         # For Atari, we take the state from the last element in the history window.
         state_seq = np.array([step.state for step in batch[0:q]], dtype=np.float32)
         # For actions, assume we store them as integers.
-        prev_action_seq = np.array([step.action for step in batch[0:q]], dtype=np.float32)
+        
+        # prev_action_seq = np.array([step.action for step in batch[0:q]], dtype=np.float32)
 
         action_seq = [step.action for step in batch[q + 1:]]
         policy_seq = [step.policy for step in batch[q + 1:]]

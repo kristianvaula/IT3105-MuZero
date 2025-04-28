@@ -1,7 +1,7 @@
 import yaml
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional
 
 @dataclass
 class LoggingConfig:
@@ -60,19 +60,6 @@ class RiverraidConfig:
     mcts: uMCTSConfig
     network: NetworkConfig
 
-
-@dataclass
-class RiverraidConfig:
-    seed: int
-    num_episodes: int
-    num_episode_step: int
-    training_interval: int
-    buffer_size: int
-    minibatch_size: int
-    skip_frames: int
-    action_frames: int
-    mcts: uMCTSConfig
-    network: NetworkConfig
 
 class Config:
     def __init__(self, config_file: str = "config.yaml"):
