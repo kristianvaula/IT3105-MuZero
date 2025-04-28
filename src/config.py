@@ -45,6 +45,20 @@ class SnakePacConfig:
     action_space: int
     mcts: uMCTSConfig
     network: NetworkConfig
+    
+@dataclass
+class RiverraidConfig:
+    num_episodes: int
+    num_episode_step: int
+    training_interval: int
+    skip_frames: int
+    action_frames: int
+    buffer_size: int
+    minibatch_size: int
+    seed: int
+    action_space: int
+    mcts: uMCTSConfig
+    network: NetworkConfig
 
 
 @dataclass

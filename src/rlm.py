@@ -1,7 +1,6 @@
 import random
 import numpy as np
 import torch
-from src.environments.snakepac import SnakePacEnv
 from src.gsm.gsm import GameStateManager
 from src.self_play.uMCTS import uMCTS
 from src.networks.neural_network_manager import NeuralNetManager
@@ -215,10 +214,10 @@ class ReinforcementLearningManager:
 
                 # Run u-MCTS starting from the abstract state.
                 policy, root_value = self.monte_carlo.search(abstract_state)
-                print(policy)
 
                 # Sample the next action from the computed policy.
-                action = self._sample_action(policy)
+                action = self._select_action(policy)
+                # action = self._sample_action(policy)
                 action_history.append(action)
 
                 # Take a step in the environment.
@@ -307,6 +306,15 @@ class ReinforcementLearningManager:
         actions = list(policy.keys())
         probabilities = list(policy.values())
         return random.choices(actions, weights=probabilities, k=1)[0]
+    
+    def _select_action(self, policy):
+        """
+        Selects the action with the highest probability from the policy.
+        """
+        actions = list(policy.keys())
+        probabilities = list(policy.values())
+        return actions[np.argmax(probabilities)]
+    
 
     def save_checkpoint(self, episode):
         """

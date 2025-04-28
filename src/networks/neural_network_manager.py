@@ -55,7 +55,7 @@ class NeuralNetManager:
         # Use the dynamics network which should return both next_state and reward
         return self.dynamics(combined_input)
 
-        # TODO: REVERT TO OLD NNd CODE IF EDVARD FUCKS UP
+        # TODO: REVERT TO OLD NNd CODE IF FUCKS UP
         """
         
         # TODO: The dynamics network only handles linear layers as the first layer: 
@@ -71,7 +71,7 @@ class NeuralNetManager:
         return self.prediction(state)
 
     def __lr_decay(self, decay_rate=0.99):
-        return self.learning_rate * decay_rate**self.training_steps
+        return max(self.learning_rate * decay_rate**self.training_steps, 1e-4)
 
     def translate_and_evaluate(self, game_state):
         """

@@ -18,6 +18,9 @@ class Node:
         self.q_value = 0.0  # Estimated cumulative reward
         self.reward = 0.0  # Reward from parent's action
 
+    def __str__(self):
+        return f"Node(state={self.state}, prior={self.prior}, visit_count={self.visit_count}, q_value={self.q_value})"
+
 
 class uMCTS:
     """
@@ -47,7 +50,7 @@ class uMCTS:
         """
         Perform u-MCTS search starting from the given root abstract state.
         """
-        root = Node(root_state, 1.0)
+        root = Node(root_state, None)
 
         for _ in range(self.num_searches):
             node = root
@@ -96,15 +99,16 @@ class uMCTS:
         best_score = -float("inf") 
         best_child = None
         # total_child_visits = sum(child.visit_count for child in node.children.values())
+
         for _, child in node.children.items():
             c = self.ucb_constant
             # Calculte Upper Confidence Bound score
-            score = child.q_value + c * math.sqrt(
+            score = child.q_value + c * child.prior * math.sqrt(
                 math.log(node.visit_count) / (1 + child.visit_count) 
             )
-        if score > best_score:
-                best_score = score
-                best_child = child
+            if score > best_score:
+                    best_score = score
+                    best_child = child
         return best_child
     
 
@@ -124,7 +128,6 @@ class uMCTS:
         """
         actions = self.action_space.n
         policy, _ = self.nnm.NNp(node.state)
-        policy = {index: 1.0 for index in range(actions)}  # uniform policy
 
         for action in range(actions):
             if action not in node.children:
