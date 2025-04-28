@@ -15,13 +15,13 @@ class LoggingConfig:
 
 @dataclass
 class NetworkConfig:
+    roll_ahead: int
     iteration: str
     representation: List[dict]
     prediction: List[dict]
     dynamics: List[dict]
     # Optional for environments like riverraid
     state_window: Optional[int] = None
-    roll_ahead: Optional[int] = None
     hidden_state_size: Optional[int] = None
 
 
@@ -74,6 +74,7 @@ class Config:
             self.uMCTS = uMCTSConfig(**env_data["uMCTS"])
         elif self.environment_name == "riverraid":
             env_data = self.__config_data["riverraid"]
+            print(env_data)
             self.environment = RiverraidConfig(**env_data)
             self.networks =  NetworkConfig(**env_data["network"])
             self.uMCTS = uMCTSConfig(**env_data["mcts"])

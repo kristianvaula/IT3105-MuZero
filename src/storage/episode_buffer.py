@@ -76,6 +76,7 @@ class EpisodeBuffer:
         if max_index < q:
             raise ValueError(f"Episode length ({max_index}) is less than q ({q}).")
 
+        print(f"Episode length: {max_index}, q: {q}, w: {w}")
         # Choose random state ensuring enough look-back and k+w does not exceed episode length
         k = random.randint(q, max_index - w)
 

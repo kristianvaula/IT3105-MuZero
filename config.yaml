@@ -84,21 +84,23 @@ riverraid:
   seed: 42
   num_episodes: 1000         # total training episodes
   num_episode_step: 100       # simulations per move (affects uMCTS)
-  training_interval: 20      # how often to update networks
-  buffer_size: 20            # size of the replay buffer
+  training_interval: 1      # how often to update networks
+  buffer_size: 100            # size of the replay buffer
   minibatch_size: 32             # minibatch size for training
   skip_frames: 4             # common Atari frame skipping
   action_frames: 4           # number of frames representing a single action
   
   mcts:
-    num_searches: 100        # number of searches in uMCTS per move
-    max_depth: 15            # maximum rollout depth
+    num_searches: 50        # number of searches in uMCTS per move
+    max_depth: 10            # maximum rollout depth
     ucb_constant: 1.0
     discount_factor: 0.99
 
   network:
+    roll_ahead: 10
     iteration: ""
     state_window: 32
+    
     
     # -----------------------------------------------------------------------------
     # Representation Network

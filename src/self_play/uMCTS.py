@@ -87,8 +87,7 @@ class uMCTS:
         # After simulations, compute the probability distribution over actions
         policy = self.__compute_policy(root)
 
-        _, root_value = self.nnm.NNp(root.state)
-        return policy, root_value
+        return policy, root.q_value
 
     def __is_leaf(self, node: Node):
         """Check if the node has children to determine if it is a leaf node"""
