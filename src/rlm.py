@@ -10,7 +10,7 @@ from src.config import Config
 from src.storage.episode_buffer import Episode
 import wandb
 import os
-
+import torchvision.transforms as T
 
 class ReinforcementLearningManager:
     """
@@ -27,7 +27,7 @@ class ReinforcementLearningManager:
 
     def __init__(
         self,
-        env: SnakePacEnv,
+        env,
         gsm: GameStateManager,
         monte_carlo: uMCTS,
         nnm: NeuralNetManager,
@@ -247,6 +247,56 @@ class ReinforcementLearningManager:
             )
             cat = torch.cat((state_tensor, action_tensor), dim=0)
             return cat
+        elif self.config.environment_name == "riverraid":
+            window = self.history_length  # Should be 32 according to config
+            
+            if len(state_history) < window:
+                pad_length = window - len(state_history)
+                state_history = [state_history[0]] * pad_length + state_history
+                action_history = [self.env.action_space.sample()] * pad_length + action_history 
+            
+            # Take the last 'window' states and actions
+            recent_states = state_history[-window:]
+            recent_actions = action_history[-window:]
+            
+            # Create tensor for RGB states (32 frames × 3 channels × 96×96)
+            # Note: Skip the grayscale conversion to keep RGB channels
+            rgb_transform = T.Compose([
+                T.ToPILImage(),
+                T.Resize((96, 96)),
+                T.ToTensor()  # Returns [C, H, W] format with values [0, 1]
+            ])
+            
+            state_tensors = []
+            for state in recent_states:
+                # Transform to 3×96×96 (keeping RGB)
+                state_tensor = rgb_transform(state)  # shape: [3, 96, 96]
+                state_tensors.append(state_tensor)
+            
+            # Stack all state tensors: [32, 3, 96, 96]
+            states_tensor = torch.stack(state_tensors)
+            
+            # Reshape to [32*3, 96, 96] = [96, 96, 96]
+            states_tensor = states_tensor.view(-1, 96, 96)
+            
+            # Create action bias planes [32, 96, 96]
+            action_tensors = []
+            for action in recent_actions:
+                # Normalize action value (assuming action space of 18 as in config)
+                norm_action = float(action) / 18.0
+                # Create a constant plane filled with this action value
+                action_plane = torch.full((96, 96), norm_action, dtype=torch.float32)
+                action_tensors.append(action_plane)
+            
+            # Stack all action planes: [32, 96, 96]
+            actions_tensor = torch.stack(action_tensors)
+            
+            # Combine state and action tensors to form input with 128 channels
+            # [96+32, 96, 96] = [128, 96, 96]
+            phi = torch.cat([states_tensor, actions_tensor], dim=0)
+            
+            return phi
+            
         else:
             raise NotImplementedError("Only SnakePac environment is supported.")
 

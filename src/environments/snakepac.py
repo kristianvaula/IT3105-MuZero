@@ -53,8 +53,12 @@ class SnakePacEnv(gym.Env):
         if action not in [0, 1, 2]:
             raise ValueError("Invalid Action. Action must be 0 (no-op), 1 (left) or 2 (right).")
         
-        # Compute the distance from the agent to the coin before the action.
-        prev_distance = abs(self.user_pos - self.coin_pos)
+        # Find the direction of the coin relative to the user.
+        right_direction = False
+        if self.coin_pos > self.user_pos:
+            right_direction = True
+        elif self.coin_pos < self.user_pos:
+            right_direction = False
         
         # Execute the action.
         if action == 1:
@@ -63,26 +67,25 @@ class SnakePacEnv(gym.Env):
             self.user_pos = min(self.world_length - 1, self.user_pos + 1)
         # For action 0, no change.
 
-        reward = 0
         done = False  # This environment is endless.
-        
-        # Compute the new distance after the move.
-        new_distance = abs(self.user_pos - self.coin_pos)
-        
-        # Reward shaping:
-        if new_distance < prev_distance:
-            reward += 0.1  # Bonus for moving closer.
-        elif new_distance > prev_distance:
-            reward -= 0.2  # Penalty for moving away.
-        # If new_distance == prev_distance, no shaping reward is given.
-        
-        # reward = 0
-        # obs = self._get_obs()
-        # Check if the user lands on the coin.
+
+        # Reward shaping based on the movement direction relative to the coin.
         if self.user_pos == self.coin_pos:
-            reward = 1  # Main reward for collecting the coin.
+            reward = 10  # Main reward for collecting the coin.
             # Respawn the coin at a new location different from the agent.
             self.reset()
+        elif action == 0:
+            reward = -1
+        elif right_direction:
+            if action == 2:
+                reward = 2  # Moving right when the coin is to the right.
+            elif action == 1:
+                reward = -3  # Moving left is the wrong direction.
+        else:
+            if action == 1:
+                reward = 2  # Moving left when the coin is to the left.
+            elif action == 2:
+                reward = -3  # Moving right is the wrong direction.
 
         info = {}
         # Gymnasium's step should return: observation, reward, terminated, truncated, info.

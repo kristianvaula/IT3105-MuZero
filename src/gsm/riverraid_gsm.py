@@ -1,42 +1,58 @@
-from src.gsm.gsm import GameStateManager 
+import numpy as np
 import copy
+from .gsm import GameStateManager
+
 
 class RiverraidGSM(GameStateManager):
-    def __init__(self, env, seed):
+    def __init__(self, env):
         super().__init__(env)
-        self.seed = seed
-        self.cache = {}
-
+        self.initial_observation, _ = self.env.reset()
+    
     def get_initial_state(self):
-        state = self.env.reset(seed=self.seed)
-        return state
+        """
+        Returns the initial state of the environment.
+        We use a deep copy to avoid unintended mutations.
+        """
+        obs, _ = self.env.reset()
+        return copy.deepcopy(obs)
 
     def get_legal_actions(self, state):
-        # Typically, this would query the environment's action space
+        """
+        Riverraid has a discrete fixed action space.
+        """
         return list(range(self.env.action_space.n))
 
     def get_next_state_reward(self, state, action):
-        # Set the environment to the given state, perform the action
+        """
+        Simulates an action from a given state and returns (next_state, reward, done).
+        We create a new environment instance to simulate the state transition safely.
+        """
+        temp_env = copy.deepcopy(self.env)
+        temp_env.reset()
+        temp_env.env._ale.setRAM(state.copy())
         
-        cache_key = (state.tobytes(), action)
-        if cache_key in self.cache:
-            return self.cache[cache_key]
-          
-        env_clone = copy.deepcopy(self.env)
-        next_state, reward, done, _ = env_clone.step(action)
-        
-        self.cache[cache_key] = (next_state, reward, done)
-        
-        return next_state, reward, done
+        next_obs, reward, terminated, truncated, _ = temp_env.step(action)
+        done = terminated or truncated
+        return copy.deepcopy(next_obs), reward, done
 
     def evaluate_state(self, state):
+        """
+        Heuristic evaluation of the state. For now, we just return 0.
+        You can improve this by estimating score from pixel data.
+        """
         return 0.0
 
     def get_policy(self, state):
-        # Return a uniform or learned policy
-        return [1.0 / self.env.action_space.n] * self.env.action_space.n
+        """
+        Returns a uniform random policy.
+        """
+        legal_actions = self.get_legal_actions(state)
+        policy = np.ones(len(legal_actions)) / len(legal_actions)
+        return policy
 
     def is_terminal(self, state):
-        # Determine if the state is terminal
-        return False
-        
+        """
+        We can’t directly tell from the state. Placeholder method.
+        Will need real game logic or internal signal for accuracy.
+        """
+        return False  # Optional: track episode length or life loss
