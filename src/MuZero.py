@@ -36,7 +36,6 @@ class MuZero:
         # Initialize neural networks with configurations
         # TODO
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        device = "cpu"  # TODO: enable cuda
         if config.logging.load_model and config.networks.iteration is not None:
             representation_network = RepresentationNetwork(
                 config.networks.representation, device=device
@@ -131,8 +130,9 @@ def main():
     muzero = MuZero(config)
 
     # Run training loop
-    muzero.run_training()
+    
     if config.logging.save_model:
+        muzero.run_training()
         muzero.save_models()
 
     if config.logging.load_model:
