@@ -56,6 +56,7 @@ class RiverraidConfig:
     buffer_size: int
     minibatch_size: int
     seed: int
+    action_space: int
     mcts: uMCTSConfig
     network: NetworkConfig
 
