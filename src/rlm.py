@@ -155,7 +155,7 @@ class ReinforcementLearningManager:
             if (episode + 1) % self.training_interval == 0:
                 # TODO: Networks are only trained every training_interval episodes:
                 # This might be too infrequent for efficient learning, depending on your specific environment.
-                loss_history, lr_history = self.nnm.bptt(self.episode_buffer, self.history_length, self.roll_ahead, self.minibatch_size)
+                loss_history, lr_history = self.nnm.bptt(self.episode_buffer, self.history_length, self.roll_ahead, self.minibatch_size, self.config.environment)
                 # loss is tensor so print as list of values
                 loss_history = loss_history.tolist() if isinstance(loss_history, torch.Tensor) else loss_history
                 lr_history = lr_history.tolist() if isinstance(lr_history, torch.Tensor) else lr_history
@@ -225,8 +225,9 @@ class ReinforcementLearningManager:
 
                 # Optionally render the environment.
                 if hasattr(self.env, "render"):
-                    
-                    self.env.render(reward=reward==1)
+                    print(f"DEBUG: Environment render mode before render(): {self.env.render_mode}")
+                    #self.env.render(reward=reward==1)
+                    self.env.render()
 
             print("Episode finished!")
 
