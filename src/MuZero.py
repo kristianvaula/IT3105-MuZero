@@ -31,6 +31,8 @@ class MuZero:
         # Load environments and Game State Manager
         env, gsm = self.__initialize_env(config)
 
+        action_space_size = config.environment.action_space
+
         # Initialize neural networks with configurations
         # TODO
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -39,7 +41,9 @@ class MuZero:
             representation_network = RepresentationNetwork(
                 config.networks.representation, device=device
             )
-            dynamics_network = DynamicsNetwork(config.networks.dynamics, device=device)
+            dynamics_network = DynamicsNetwork(
+                config.networks.dynamics, device=device, action_space=action_space_size
+            )
             prediction_network = PredictionNetwork(
                 config.networks.prediction, device=device
             )
@@ -55,7 +59,9 @@ class MuZero:
             representation_network = RepresentationNetwork(
                 config.networks.representation, device=device
             )
-            dynamics_network = DynamicsNetwork(config.networks.dynamics, device=device)
+            dynamics_network = DynamicsNetwork(
+                config.networks.dynamics, device=device, action_space=action_space_size
+            )
             prediction_network = PredictionNetwork(
                 config.networks.prediction, device=device
             )
@@ -102,7 +108,13 @@ class MuZero:
         elif config.environment_name == "riverraid":
             from .gsm.riverraid_gsm import RiverraidGSM
 
-            env = gym.make("ALE/Riverraid-v5")
+            if config.logging.load_model:
+                env = gym.make(
+                    "ALE/Riverraid-v5",
+                    render_mode="human",
+                )
+            else:
+                env = gym.make("ALE/Riverraid-v5")
             env.reset(seed=config.environment.seed)
             gsm = RiverraidGSM(env)
         else:
@@ -123,7 +135,19 @@ def main():
     if config.logging.save_model:
         muzero.save_models()
 
-    muzero.rlm.play(5)
+    if config.logging.load_model:
+        # Load models
+        muzero.nnm.representation.load_model(
+            config.networks.iteration, "representation_model.pth"
+        )
+        muzero.nnm.dynamics.load_model(
+            config.networks.iteration, "dynamics_model.pth"
+        )
+        muzero.nnm.prediction.load_model(
+            config.networks.iteration, "prediction_model.pth"
+        )
+
+        muzero.rlm.play(5)
 
 
 if __name__ == "__main__":
