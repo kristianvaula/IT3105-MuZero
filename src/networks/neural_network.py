@@ -8,14 +8,18 @@ def build_head(head_config):
         layers = []
         for config in head_config:
             if config is not None:
-                layers.append(NetworkBuilder([config]).build_layer(config)[0])
+                built_layer_list = NetworkBuilder([config]).build_layer(config)
+                if built_layer_list:
+                     layers.append(built_layer_list[0])
     else:
         layers = NetworkBuilder([head_config]).build_layer(head_config)
+        if not isinstance(layers, list):
+             layers = [layers] if layers else []
         
     return torch.nn.Sequential(*layers) 
 
 
-class NeuralNetwork:
+class NeuralNetwork(torch.nn.Module):
     def __init__(self, layer_configs, device, build=True, iteration=None):
         """
         Build a network from layer configurations.
@@ -24,12 +28,15 @@ class NeuralNetwork:
           - Required parameters (e.g., in_features, out_features).
           - Optional "activation": Activation function name (e.g., "relu").
         """
+        super().__init__() 
         self.layer_configs = layer_configs
-        self.network = NetworkBuilder(layer_configs).build_network()
         self.device = device
 
-        if self.network is not None:
-            self.network.to(device)
+        if layer_configs:
+             self.network = NetworkBuilder(layer_configs).build_network()
+        else:
+            self.network = None
+
 
     def __call__(self, x, **kwargs):
         raise NotImplementedError("Subclasses must implement this method.")
@@ -48,6 +55,10 @@ class NeuralNetwork:
             model_name (str): Name of the model file, with type.
             dir (str): Directory to save the model.
         """
+        if not hasattr(self, 'state_dict'): # Basic check
+             raise ValueError("Model cannot be saved, state_dict method missing.")
+
+
         if self.network is None:
             raise ValueError("Model has not been initialized. Cannot save.")
 
@@ -67,7 +78,8 @@ class NeuralNetwork:
         os.makedirs(dir_path, exist_ok=True)
 
         model_path = f"{dir_path}/{model_name}"
-        torch.save(self.network.state_dict(), model_path)
+        #torch.save(self.network.state_dict(), model_path)
+        torch.save(self.state_dict(), model_path)
         print(f"Model saved to {model_path}")
 
     def load_model(
@@ -93,13 +105,15 @@ class NeuralNetwork:
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Model file {model_path} not found.")
 
-            if self.network is None:
+            if self.network is None and hasattr(self, 'layer_configs'):
                 print("Rebuilding the network before loading weights...")
                 self.network = NetworkBuilder(self.layer_configs).build_network()
                 self.network.to(self.device)
 
-            self.network.load_state_dict(torch.load(model_path), strict=False)
-            self.network.to(self.device)
+            #self.network.load_state_dict(torch.load(model_path), strict=False)
+            self.network.load_state_dict(torch.load(model_path, map_location=self.device), strict=False)
+            #self.network.to(self.device)
+            self.to(self.device)
             print(f"Model loaded from {model_path}")
 
         except Exception as e:
@@ -119,28 +133,44 @@ class NeuralNetwork:
 
 
 class RepresentationNetwork(NeuralNetwork):
-    def __init__(self, layer_configs, device, build=True):
-        super().__init__(layer_configs, device, build)
+     def __init__(self, layer_configs, device, build=True):
+         super().__init__(layer_configs, device, build)
+         self.to(device)
 
-    def __call__(self, x, **kwargs):
-        x = self.preprocess(x)
-        hidden_activation = self.forward(x)
-        return self.postprocess(hidden_activation)
+     def __call__(self, x, **kwargs):
+         hidden_activation = self.forward(x)
+         return hidden_activation
+
+     def save_model(
+         self, subdir: int | None = None, model_name="representation_model.pth", dir="models"
+     ):
+         super().save_model(subdir, model_name, dir)
+
+     def load_model(
+           self, iteration=None, model_name="representation_model.pth", dir="models"
+       ):
+           super().load_model(iteration, model_name, dir)
+
 
 class DynamicsNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, action_space=18, build=True):
         head_layers = layer_configs[-4:]
         build_layers = layer_configs[:-4]
+
         super().__init__(build_layers, device, build)
+        
         self.state_head = build_head(head_layers[0])
         self.reward_head = build_head(head_layers[1:])
         self.num_actions = action_space
+        self.to(device)
 
     def __call__(self, hidden_state, action=None):
         if action is not None:
             # Here you may adapt the fusion scheme.
             # Hidden state is (B, C, H, W) and action is (B)
             # then concatenate along channel dimension:
+
+            action = action.to(hidden_state.device)
             
             B, C, H, W = hidden_state.shape
 
@@ -152,6 +182,8 @@ class DynamicsNetwork(NeuralNetwork):
 
             # 3. Expand to match spatial dims
             action_tensor = action_onehot.expand(-1, -1, H, W)  # (B, num_actions, H, W)
+
+            action_tensor = action_tensor.to(hidden_state.device)
 
             # 4. Concatenate
             x = torch.cat((hidden_state, action_tensor), dim=1)
@@ -189,9 +221,12 @@ class PredictionNetwork(NeuralNetwork):
     def __init__(self, layer_configs, device, build=True):
         head_layers = layer_configs[-2:]
         build_layers = layer_configs[:-2]
+
         super().__init__(build_layers, device, build)
+        
         self.policy_head = build_head(head_layers[0])
         self.value_head = build_head(head_layers[1])
+        self.to(device)
 
     def __call__(self, x):
         input = self.preprocess(x)
@@ -202,6 +237,11 @@ class PredictionNetwork(NeuralNetwork):
         self, subdir: int | None = None, model_name="prediction_model.pth", dir="models"
     ):
         super().save_model(subdir, model_name, dir)
+
+    def load_model(
+          self, iteration=None, model_name="prediction_model.pth", dir="models"
+      ):
+          super().load_model(iteration, model_name, dir)
 
     def postprocess(self, hidden_activation):
         return self.policy_head(hidden_activation), self.value_head(hidden_activation)
@@ -215,3 +255,5 @@ class PredictionNetwork(NeuralNetwork):
 
     def forward(self, x):
         return self.network(x)
+
+
