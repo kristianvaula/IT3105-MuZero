@@ -1,11 +1,12 @@
 environment: 'riverraid' # 'snakepac' or other when implemented
-logging_config: 
+logging_config:
   use_wandb: True
   wandb_project: 'MuZero'
   wandb_name: 'riverraid'
   load_model: False
   save_model: True
   checkpoint_interval: 100
+  avg_reward_window: 20
 
 snakepac:
   num_episodes: 500 # How many episodes to train the model 
@@ -82,7 +83,7 @@ snakepac:
 
 riverraid:
   seed: 42
-  num_episodes: 250         # total training episodes
+  num_episodes: 500         # total training episodes
   num_episode_step: 500       # simulations per move (affects uMCTS)
   training_interval: 10      # how often to update networks
   buffer_size: 100            # size of the replay buffer
@@ -93,13 +94,13 @@ riverraid:
 
   
   mcts:
-    num_searches: 50        # number of searches in uMCTS per move
+    num_searches: 100        # number of searches in uMCTS per move
     max_depth: 10            # maximum rollout depth
-    ucb_constant: 1.0
+    ucb_constant: 1.2
     discount_factor: 0.99
 
   network:
-    roll_ahead: 10
+    roll_ahead: 5
     iteration: ""
     state_window: 32
     
