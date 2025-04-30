@@ -83,41 +83,56 @@ class NeuralNetwork(torch.nn.Module):
         print(f"Model saved to {model_path}")
 
     def load_model(
-        self, iteration=None, model_name="representation_model.pth", dir="models"
+        self, iteration=None, model_name="representation_model.pth", dir="checkpoints" # 
     ):
         """
-        Load the model from a directory.
+        Load the model from a directory (defaults to checkpoints).
         """
         try:
             if not os.path.exists(dir):
-                os.makedirs(dir)
+                if dir == "checkpoints" and os.path.exists("models"):
+                    print(f"Directory '{dir}' not found, checking legacy 'models/' directory.")
+                    dir = "models"
+                else:
+                    raise FileNotFoundError(f"Model load directory '{dir}' not found.")
 
-            subdirs = os.listdir(dir)
-            if not subdirs:
-                raise FileNotFoundError("No models found in directory.")
+            load_subdir = None
             if iteration is None or iteration == "":
-                subdir = str(max(int(s) for s in subdirs))
+                numeric_subdirs = [s for s in os.listdir(dir) if s.split('_')[0].isdigit()]
+                if not numeric_subdirs:
+                    raise FileNotFoundError(f"No checkpoint subdirectories found in '{dir}'.")
+                latest_subdir = max(numeric_subdirs, key=lambda s: int(s.split('_')[0]))
+                load_subdir = latest_subdir
+                print(f"No specific iteration provided, loading from latest identified subdir: {load_subdir}")
             else:
-                subdir = str(iteration)
+                load_subdir = str(iteration)
+                print(f"Attempting to load from specified iteration subdir: {load_subdir}")
 
-            model_path = os.path.join(dir, subdir, model_name)
+            model_path = os.path.join(dir, load_subdir, model_name)
 
             if not os.path.exists(model_path):
                 raise FileNotFoundError(f"Model file {model_path} not found.")
 
-            if self.network is None and hasattr(self, 'layer_configs'):
-                print("Rebuilding the network before loading weights...")
-                self.network = NetworkBuilder(self.layer_configs).build_network()
-                self.network.to(self.device)
+            if self.network is None and hasattr(self, 'layer_configs') and self.layer_configs:
+                print(f"Rebuilding the {type(self).__name__} network before loading weights...")
+                pass 
 
-            #self.network.load_state_dict(torch.load(model_path), strict=False)
-            self.network.load_state_dict(torch.load(model_path, map_location=self.device), strict=False)
-            #self.network.to(self.device)
+            print(f"Loading state dict from {model_path} onto device {self.device}")
+            state_dict = torch.load(model_path, map_location=self.device)
+            self.load_state_dict(state_dict) 
             self.to(self.device)
-            print(f"Model loaded from {model_path}")
+            self.eval() 
+            print(f"Model loaded successfully from {model_path}")
 
-        except Exception as e:
+        except FileNotFoundError as e:
             print(f"Error loading model: {e}")
+            raise e 
+        except Exception as e:
+            print(f"An unexpected error occurred during model loading: {e}")
+            import traceback
+            traceback.print_exc()
+            raise e
+
 
     def preprocess(self, x):
         return x
@@ -174,27 +189,21 @@ class DynamicsNetwork(NeuralNetwork):
             
             B, C, H, W = hidden_state.shape
 
-            # 1. One-hot encode the action
             action_onehot = torch.nn.functional.one_hot(action, num_classes=self.num_actions)  # (B, num_actions)
 
-            # 2. Convert to float and add spatial dims
             action_onehot = action_onehot.view(B, self.num_actions, 1, 1).float()  # (B, num_actions, 1, 1)
 
-            # 3. Expand to match spatial dims
             action_tensor = action_onehot.expand(-1, -1, H, W)  # (B, num_actions, H, W)
 
             action_tensor = action_tensor.to(hidden_state.device)
 
-            # 4. Concatenate
             x = torch.cat((hidden_state, action_tensor), dim=1)
         else:
             x = hidden_state
             
 
-        # 4) forward through your conv trunk:
         hidden_activation = self.forward(x)
 
-        # 5) split off next-state & reward:
         return self.postprocess(hidden_activation)
 
     def save_model(
