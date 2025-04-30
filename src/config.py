@@ -11,6 +11,7 @@ class LoggingConfig:
     load_model: bool
     save_model: bool
     checkpoint_interval: int
+    avg_reward_window: int
 
 
 @dataclass
