@@ -17,7 +17,7 @@ class NeuralNetManager:
         representation: RepresentationNetwork,
         dynamics: DynamicsNetwork,
         prediction: PredictionNetwork,
-        learning_rate=0.001,
+        learning_rate=0.0002,
     ):
         self.representation = representation
         self.dynamics = dynamics
@@ -157,6 +157,8 @@ class NeuralNetManager:
         states_tensor = torch.stack(state_tensors) # shape: [window_size, 3, 96, 96]
 
         # Reshape to [window_size*3, 96, 96] (e.g., [96, 96, 96] for window_size=32)
+    
+
         states_tensor = states_tensor.view(-1, 96, 96)
 
         # Create action bias planes
