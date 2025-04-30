@@ -9,6 +9,7 @@ from src.networks.neural_network import (
 )
 from src.networks.neural_network_manager import NeuralNetManager
 from src.rlm import ReinforcementLearningManager
+from src.wrappers.single_life_wrapper import SingleLifeWrapper
 import gymnasium as gym
 import ale_py
 gym.register_envs(ale_py)
@@ -107,14 +108,19 @@ class MuZero:
         elif config.environment_name == "riverraid":
             from .gsm.riverraid_gsm import RiverraidGSM
 
+            env = None
             if config.logging.load_model:
                 env = gym.make(
                     "ALE/Riverraid-v5",
-                    render_mode="human",
+                    #render_mode="human",
                 )
             else:
                 env = gym.make("ALE/Riverraid-v5")
-            env.reset(seed=config.environment.seed)
+
+            env = SingleLifeWrapper(env)
+
+            _, initial_info = env.reset(seed=config.environment.seed)
+            print(f"Initial reset info: {initial_info}")
             gsm = RiverraidGSM(env)
         else:
             raise ValueError(f"Invalid environment: {config.environment}")
@@ -137,7 +143,7 @@ def main():
 
     if config.logging.load_model:
         # Load models
-        muzero.nnm.representation.load_model(
+        """muzero.nnm.representation.load_model(
             config.networks.iteration, "representation_model.pth"
         )
         muzero.nnm.dynamics.load_model(
@@ -145,9 +151,10 @@ def main():
         )
         muzero.nnm.prediction.load_model(
             config.networks.iteration, "prediction_model.pth"
-        )
+        )"""
 
-        muzero.rlm.play(5)
+        muzero.rlm.play(num_episodes=5, record_folder="./playback_videos")
+
 
 
 if __name__ == "__main__":
