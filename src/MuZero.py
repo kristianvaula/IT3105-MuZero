@@ -68,7 +68,7 @@ class MuZero:
 
         # Initialize neural network manager (NNM)
         self.nnm = NeuralNetManager(
-            representation_network, dynamics_network, prediction_network
+            representation_network, dynamics_network, prediction_network, config
         )
 
         # Intialize u-MCTS module

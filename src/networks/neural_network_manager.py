@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import List
+from src.config import Config
 from src.storage.episode_buffer import EpisodeBuffer, EpisodeStep
 from src.networks.neural_network import RepresentationNetwork
 from src.networks.neural_network import DynamicsNetwork
@@ -17,11 +18,13 @@ class NeuralNetManager:
         representation: RepresentationNetwork,
         dynamics: DynamicsNetwork,
         prediction: PredictionNetwork,
+        config: Config,
         learning_rate=0.0002,
     ):
         self.representation = representation
         self.dynamics = dynamics
         self.prediction = prediction
+        self.config = config
         self.learning_rate = learning_rate
         self.training_steps = 0
 
@@ -225,85 +228,127 @@ class NeuralNetManager:
         action_seq_future = [step.action for step in batch[q : q + w]]
 
         policy_seq_targets = [step.policy for step in batch[q : q + w]]
+
         reward_seq_targets = [step.reward for step in batch[q : q + w]] # r_{q+1} to r_{q+w}
-        value_seq_targets = [step.value for step in batch[q : q + w]]   # v_q to v_{q+w-1}
+        #value_seq_targets = [step.value for step in batch[q : q + w]]   # v_q to v_{q+w-1}
 
         actual_w = len(action_seq_future)
         if actual_w == 0:
              print(f"Warning: No future steps available in batch segment after q={q}. Skipping update.")
              return torch.tensor(0.0, device=self.representation.device) # Return zero loss tensor
 
-
         w = actual_w 
 
-        targets = list(zip(value_seq_targets, reward_seq_targets, policy_seq_targets))
+        #targets = list(zip(value_seq_targets, reward_seq_targets, policy_seq_targets))
+
+        reward_seq_targets = reward_seq_targets[:w] # r_{q+1} to r_{q+w}
+        policy_seq_targets = policy_seq_targets[:w] # pi_{q} to pi_{q+w-1}
+
+        if len(reward_seq_targets) != w or len(policy_seq_targets) != w:
+            print(f"Warning: Mismatch in target sequence lengths (w={w}, rewards={len(reward_seq_targets)}, policies={len(policy_seq_targets)}). Skipping update.")
+            return torch.tensor(0.0, device=self.representation.device)
 
         initial_input_tensor = self._prepare_initial_riverraid_input(
             state_history, action_history, q, env_config.action_space # Use q for window size
         ) # Shape [128, 96, 96], on correct device
 
-        hidden_state, value, reward_pred_dummy, policy_logits, _ = self.translate_and_evaluate(initial_input_tensor)
+        initial_input_tensor = initial_input_tensor.to(self.representation.device)
 
-        predictions = [(1.0, value, reward_pred_dummy, policy_logits)]
+        #hidden_state, value, reward_pred_dummy, policy_logits, _ = self.translate_and_evaluate(initial_input_tensor)
+        hidden_state, value_pred_q, _, policy_logits_q, _ = self.translate_and_evaluate(initial_input_tensor)
+
+        predictions = [(1.0, value_pred_q, torch.tensor(0.0), policy_logits_q)]
 
         # Unroll the rollout using actions in action_seq.
         for i, action in enumerate(action_seq_future):
-            hidden_state, value, reward_pred, policy_logits, _ = self.transition_and_evaluate(
+            hidden_state, value_pred, reward_pred, policy_logits, _ = self.transition_and_evaluate(
                 hidden_state, action
             )
             # gradient_scale = 1.0 / w # Or some other scheme
             gradient_scale = 1.0 # Often scale=1 is used here
-            predictions.append((gradient_scale, value, reward_pred, policy_logits))
+            predictions.append((gradient_scale, value_pred, reward_pred, policy_logits))
+            if i < w - 1: # Don't scale gradient of final hidden state if not used further
+                hidden_state = self.__scale_gradient(hidden_state, 0.5)
             # Scale gradient flowing back through hidden state
-            hidden_state = self.__scale_gradient(hidden_state, 0.5)
+            #hidden_state = self.__scale_gradient(hidden_state, 0.5)
 
-        total_loss = torch.tensor(0.0, dtype=torch.float32, requires_grad=True, device=value.device)
+        value_targets_calculated = []
+        gamma = self.config.uMCTS.discount_factor # Get discount factor
+        device = predictions[-1][1].device
+
+        last_value = predictions[w][1].detach()
+        accumulated_return = last_value
+
+        for i in range(w - 1, -1, -1):
+            # Target z_{q+i} = r_{q+i+1} + gamma * (r_{q+i+2} + ... + gamma * v(s_{q+w}))
+            # Use recursive form: z_k = r_{k+1} + gamma * G (where G is the return from k+1 onwards)
+            # reward_seq_targets[i] corresponds to r_{q+i+1} (reward after action a_{q+i})
+            reward_k_plus_1 = torch.tensor([reward_seq_targets[i]], dtype=torch.float32, device=device)
+            accumulated_return = reward_k_plus_1 + gamma * accumulated_return
+            value_targets_calculated.append(accumulated_return)
+
+        # Reverse the list to align: targets[k] corresponds to state s_{q+k}
+        value_targets_calculated.reverse() # Now holds z_q, z_{q+1}, ..., z_{q+w-1}            
+
+        #total_loss = torch.tensor(0.0, dtype=torch.float32, requires_grad=True, device=value.device)
+        total_loss = torch.tensor(0.0, dtype=torch.float32, requires_grad=True, device=device)
+
+
 
         # Compute loss from predictions vs. targets.
         for k in range(w):
-            gradient_scale, pred_value, pred_reward_k, pred_policy_logits = predictions[k] # Prediction for state k
-            target_value_k, target_reward_kp1, target_policy_k = targets[k] # Targets related to state k and action k
+            gradient_scale, pred_value_k, _, pred_policy_logits_k = predictions[k] # Prediction for state k
+            #target_value_k, target_reward_kp1, target_policy_k = targets[k] # Targets related to state k and action k
+
+            target_value_k = value_targets_calculated[k]
+
+            target_reward_kp1 = torch.tensor([reward_seq_targets[k]], dtype=torch.float32, device=device)
+
+            target_policy_k = torch.tensor(policy_seq_targets[k], dtype=torch.float32, device=device)
+
+            if target_policy_k.dim() == 1:
+                target_policy_k = target_policy_k.unsqueeze(0)
 
             # Ensure targets are tensors and on the correct device
-            device = pred_value.device
-            target_value_tensor = torch.tensor([target_value_k], dtype=torch.float32, device=device)
-            target_reward_tensor = torch.tensor([target_reward_kp1], dtype=torch.float32, device=device) # Reward r_{q+k+1}
-            target_policy_tensor = torch.tensor(target_policy_k, dtype=torch.float32, device=device)
-            if target_policy_tensor.dim() == 1:
-                target_policy_tensor = target_policy_tensor.unsqueeze(0) # Add batch dim if needed
+            #device = pred_value.device
+            #target_value_tensor = torch.tensor([target_value_k], dtype=torch.float32, device=device)
+            #target_reward_tensor = torch.tensor([target_reward_kp1], dtype=torch.float32, device=device) # Reward r_{q+k+1}
+            #target_policy_tensor = torch.tensor(target_policy_k, dtype=torch.float32, device=device)
+            #if target_policy_tensor.dim() == 1:
+            #    target_policy_tensor = target_policy_tensor.unsqueeze(0) # Add batch dim if needed
 
-            # Value loss: Compare predicted value at step k with MCTS value at step k
-            l_v = self.__loss_fn(pred_value, target_value_tensor)
+            # Value loss: L_v = (z_k - v_theta(s_{q+k}))^2
+            l_v = self.__loss_fn(pred_value_k, target_value_k)
 
-            # Reward loss: Compare predicted reward for step k+1 with actual reward r_{q+k+1}
-            # Prediction[k+1] contains reward resulting from action a_{q+k} (transition k -> k+1)
-            # Target[k] contains reward r_{q+k+1}
-            # We need prediction k+1's reward here.
-            _, _, pred_reward_kp1, _ = predictions[k+1] # Reward predicted for transition k -> k+1
-            l_r = self.__loss_fn(pred_reward_kp1, target_reward_tensor)
+            # Reward loss: L_r = (r_{q+k+1} - rhat_theta(s_{q+k+1}))^2
+            # Network prediction for reward rhat_{q+k+1} is in predictions[k+1][2]
+            _, _, pred_reward_kp1, _ = predictions[k+1]
+            l_r = self.__loss_fn(pred_reward_kp1, target_reward_kp1)
 
-            # Policy loss: Compare predicted policy at step k with MCTS policy at step k
-            l_p = self.__policy_loss_fn(pred_policy_logits, target_policy_tensor)
+            # Policy loss: L_p = CrossEntropy(pi_{q+k}, p_theta(s_{q+k}))
+            l_p = self.__policy_loss_fn(pred_policy_logits_k, target_policy_k)
 
-            # Combine losses for this step
+            # Combine losses for this unroll step k
             step_loss = l_v + l_r + l_p
 
-            # Scale and accumulate loss
-            # total_loss = total_loss + self.__scale_gradient(step_loss, gradient_scale) # Apply scaling if needed
-            total_loss = total_loss + step_loss # Simpler: add step losses
+            # Scale gradients? Usually applied during backward pass, but can scale loss here too.
+            # MuZero often scales loss by 1/w or similar, but let's add them first.
+            total_loss = total_loss + step_loss
 
         if w > 0:
+            # Average loss over the unroll length (optional, but common)
             total_loss = total_loss / w
-        else:
-            # Avoid division by zero if w is 0 (should have been caught earlier)
-            total_loss = torch.tensor(0.0, device=value.device)
 
-        if total_loss.requires_grad: # Check if loss requires grad before backward()
-             total_loss.backward()
-             torch.nn.utils.clip_grad_norm_(self.get_weights(), max_norm=1.0)
-             optimizer.step()
+            if total_loss.requires_grad:
+                total_loss.backward()
+                # Gradient clipping is important
+                torch.nn.utils.clip_grad_norm_(self.get_weights(), max_norm=1.0) # Adjust max_norm if needed
+                optimizer.step()
+            else:
+                 print("Warning: Loss does not require grad. Skipping backward/step.")
         else:
-             print("Warning: Loss does not require grad. Skipping backward/step.")
+            # Handle case where w=0, although we check earlier
+             total_loss = torch.tensor(0.0, device=device)
 
         return total_loss.detach()
 
