@@ -13,7 +13,6 @@ import os
 import torchvision.transforms as T
 import gymnasium as gym
 from gymnasium.wrappers import RecordVideo
-import time
 
 class ReinforcementLearningManager:
     """
@@ -192,7 +191,7 @@ class ReinforcementLearningManager:
                            Requires ffmpeg and moviepy (pip install moviepy).
                            Set to None to disable recording and use existing env rendering.
         """
-        print(f"\n--- Starting Playback ---")
+        print("\n--- Starting Playback ---")
         print(f"Playing {num_episodes} episodes.")
 
         can_render_human_base = hasattr(self.env, 'render_mode') and self.env.render_mode == 'human'
@@ -427,9 +426,14 @@ class ReinforcementLearningManager:
                      dyn_path = os.path.join(full_save_dir_path, "dynamics_model.pth")
                      prd_path = os.path.join(full_save_dir_path, "prediction_model.pth")
 
-                     if os.path.exists(rep_path): artifact.add_file(rep_path, name="representation_model.pth")
-                     if os.path.exists(dyn_path): artifact.add_file(dyn_path, name="dynamics_model.pth")
-                     if os.path.exists(prd_path): artifact.add_file(prd_path, name="prediction_model.pth")
+                     if os.path.exists(rep_path): 
+                         artifact.add_file(rep_path, name="representation_model.pth")
+                         
+                     if os.path.exists(dyn_path): 
+                         artifact.add_file(dyn_path, name="dynamics_model.pth")
+
+                     if os.path.exists(prd_path): 
+                         artifact.add_file(prd_path, name="prediction_model.pth")
 
 
                      wandb.log_artifact(artifact)
