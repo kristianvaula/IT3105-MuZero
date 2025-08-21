@@ -1,5 +1,8 @@
 env/
 episode_data/
+models/
+*.wandb
+wandb*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -177,3 +180,7 @@ cython_debug/
 .DS_Store
 
 .ruff_cache
+
+playback_videos
+saved_models
+checkpoints

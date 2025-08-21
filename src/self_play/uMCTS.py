@@ -3,18 +3,23 @@
 # – Uses the ASM and NNM to expand nodes, perform rollouts, and backpropagate value estimates.
 import math
 import random
+import torch
 from typing import Dict
 from src.gsm.gsm import GameStateManager
-
+from src.networks.neural_network_manager import NeuralNetManager
 
 class Node:
-    def __init__(self, abstract_state, parent=None):
+    def __init__(self, abstract_state, prior, parent=None):
         self.state = abstract_state
         self.parent = parent
         self.children: Dict[int, Node] = {}  # dict: action -> child Node
+        self.prior = prior
         self.visit_count = 0
         self.q_value = 0.0  # Estimated cumulative reward
         self.reward = 0.0  # Reward from parent's action
+
+    def __str__(self):
+        return f"Node(state={self.state}, prior={self.prior}, visit_count={self.visit_count}, q_value={self.q_value})"
 
 
 class uMCTS:
@@ -24,7 +29,7 @@ class uMCTS:
 
     def __init__(
         self,
-        nnm,
+        nnm: NeuralNetManager,
         gsm: GameStateManager,
         action_space,
         num_searches,
@@ -45,7 +50,7 @@ class uMCTS:
         """
         Perform u-MCTS search starting from the given root abstract state.
         """
-        root = Node(root_state)
+        root = Node(root_state, None)
 
         for _ in range(self.num_searches):
             node = root
@@ -82,27 +87,30 @@ class uMCTS:
         # After simulations, compute the probability distribution over actions
         policy = self.__compute_policy(root)
 
-        _, root_value = self.nnm.NNp(root.state)
-        return policy, root_value
+        return policy, root.q_value
 
     def __is_leaf(self, node: Node):
         """Check if the node has children to determine if it is a leaf node"""
         return len(node.children) == 0
 
     def __select_child(self, node: Node):
-        """Select a child node using an UCB policy."""
-        best_score = -float("inf")
+        """Select a child node using an UCB policy with prior."""
+        best_score = -float("inf") 
         best_child = None
+        # total_child_visits = sum(child.visit_count for child in node.children.values())
+
         for _, child in node.children.items():
             c = self.ucb_constant
+            
             # Calculte Upper Confidence Bound score
-            score = child.q_value + c * math.sqrt(
-                math.log(node.visit_count + 1) / (child.visit_count + 1)
+            score = child.q_value + c * child.prior * math.sqrt(
+                math.log(node.visit_count) / (1 + child.visit_count) 
             )
             if score > best_score:
-                best_score = score
-                best_child = child
+                    best_score = score
+                    best_child = child
         return best_child
+    
 
     def __depth(self, node: Node):
         """Compute the depth of the node in the tree."""
@@ -118,19 +126,21 @@ class uMCTS:
         For the root node, legal actions can be obtained vis GSM.
         For the deeper nodes, we assume all actions are possible.
         """
-        if node.parent is None:
-            actions = self.gsm.get_legal_actions(node.state)
-        else:
-            actions = self.action_space
+        actions = self.action_space.n
+        policy, _ = self.nnm.NNp(node.state)
+        policy = policy.squeeze(0)  # Remove batch dimension
 
-        for action in actions:
+        for action in range(actions):
             if action not in node.children:
                 next_state, predicted_reward = self.nnm.NNd(node.state, action)
-                child_node = Node(next_state, parent=node)
+                prior = policy[action].item()
+                child_node = Node(next_state, prior, parent=node)
                 child_node.reward = predicted_reward
                 node.children[action] = child_node
 
     def __rollout(self, node: Node, remaining_depth):
+        # TODO: The rollout strategy in your MCTS implementation may not provide sufficient exploration:
+        # Using only the prediction network for rollouts might lead to poor exploration, especially early in training when the network is not well-trained.
         """
         Perform a rollout from the given node for a fixed depth.
         At each step, use the prediction network (NNp) to obtain a policy and value.
@@ -153,12 +163,12 @@ class uMCTS:
         return accum_reward
 
     def __sample_action(self, policy):
+        # TODO: In uMCTS.py, there's inconsistency in how actions are sampled:
+        # This assumes policy is a tensor, but in other parts of the code (like the search method), policy is treated as a dictionary.
         """
         Sample an action from a probability distribution.
         """
-        actions = list(policy.keys())
-        probabilities = list(policy.values())
-        return random.choices(actions, weights=probabilities, k=1)[0]
+        return torch.multinomial(policy, num_samples=1).item()
 
     def __backpropagate(self, node: Node, accum_reward):
         """

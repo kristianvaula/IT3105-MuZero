@@ -1,9 +1,19 @@
+import torch
 from src.config import Config
 from src.storage.episode_buffer import EpisodeBuffer
 from src.self_play.uMCTS import uMCTS
-from src.networks.network_builder import NeuralNetwork
+from src.networks.neural_network import (
+    RepresentationNetwork,
+    DynamicsNetwork,
+    PredictionNetwork,
+)
 from src.networks.neural_network_manager import NeuralNetManager
 from src.rlm import ReinforcementLearningManager
+from src.wrappers.single_life_wrapper import SingleLifeWrapper
+import gymnasium as gym
+import ale_py
+gym.register_envs(ale_py)
+
 
 """ Important parameters 
 
@@ -22,39 +32,71 @@ class MuZero:
         # Load environments and Game State Manager
         env, gsm = self.__initialize_env(config)
 
+        action_space_size = config.environment.action_space
+
         # Initialize neural networks with configurations
         # TODO
-        build = config.networks.iteration is None
-        if build:
-            # TODO: Add method for calculating input layer
-            representation_network = NeuralNetwork(config.networks.representation, device="cuda", build=build)
-            dynamics_network = NeuralNetwork(config.networks.dynamics, device="cuda", build=build)
-            prediction_network = NeuralNetwork(config.networks.prediction, device="cuda", build=build)
-        
-        else:
-            representation_network = NeuralNetwork(config.networks.representation, device="cuda", build=build)
-            dynamics_network = NeuralNetwork(config.networks.dynamics, device="cuda", build=build)
-            prediction_network = NeuralNetwork(config.networks.prediction, device="cuda", build=build)
-            representation_network.load_model(config.networks.iteration, "representation_model.pth")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        if config.logging.load_model and config.networks.iteration is not None:
+            representation_network = RepresentationNetwork(
+                config.networks.representation, device=device
+            )
+            dynamics_network = DynamicsNetwork(
+                config.networks.dynamics, device=device, action_space=action_space_size
+            )
+            prediction_network = PredictionNetwork(
+                config.networks.prediction, device=device
+            )
+            representation_network.load_model(
+                config.networks.iteration, "representation_model.pth"
+            )
             dynamics_network.load_model(config.networks.iteration, "dynamics_model.pth")
-            prediction_network.load_model(config.networks.iteration, "prediction_model.pth")
-            
+            prediction_network.load_model(
+                config.networks.iteration, "prediction_model.pth"
+            )
+        else:
+            # TODO: Add method for calculating input layer
+            representation_network = RepresentationNetwork(
+                config.networks.representation, device=device
+            )
+            dynamics_network = DynamicsNetwork(
+                config.networks.dynamics, device=device, action_space=action_space_size
+            )
+            prediction_network = PredictionNetwork(
+                config.networks.prediction, device=device
+            )
+
         # Initialize neural network manager (NNM)
-        nnm = NeuralNetManager(representation_network, dynamics_network, prediction_network)
+        self.nnm = NeuralNetManager(
+            representation_network, dynamics_network, prediction_network, config
+        )
 
         # Intialize u-MCTS module
-        monte_carlo = uMCTS(nnm, gsm, env.action_space, config.uMCTS.num_searches,
-            config.uMCTS.max_depth, config.uMCTS.ucb_constant, config.uMCTS.discount_factor)
+        monte_carlo = uMCTS(
+            self.nnm,
+            gsm,
+            env.action_space,
+            config.uMCTS.num_searches,
+            config.uMCTS.max_depth,
+            config.uMCTS.ucb_constant,
+            config.uMCTS.discount_factor,
+        )
 
         # Initialize episode buffer
-        episode_buffer = EpisodeBuffer()
+        episode_buffer = EpisodeBuffer(buffer_size=config.environment.buffer_size)
 
         # Initalize reinforcement learning manager (RLM)
-        self.rlm = ReinforcementLearningManager(env, gsm, monte_carlo, nnm, episode_buffer, config)
-        # return monte_carlo, episode_buffer
+        self.rlm = ReinforcementLearningManager(
+            env, gsm, monte_carlo, self.nnm, episode_buffer, config
+        )
 
     def run_training(self):
-        pass  # self.rlm.train();
+        self.rlm.train()
+
+    def save_models(self):
+        self.nnm.representation.save_model()
+        self.nnm.dynamics.save_model()
+        self.nnm.prediction.save_model()
 
     def __initialize_env(self, config: Config):
         if config.environment_name == "snakepac":
@@ -63,6 +105,23 @@ class MuZero:
 
             env = SnakePacEnv(config.environment.world_length, config.environment.seed)
             gsm = SnakePacGSM(env)
+        elif config.environment_name == "riverraid":
+            from .gsm.riverraid_gsm import RiverraidGSM
+
+            env = None
+            if config.logging.load_model:
+                env = gym.make(
+                    "ALE/Riverraid-v5",
+                    #render_mode="human",
+                )
+            else:
+                env = gym.make("ALE/Riverraid-v5")
+
+            env = SingleLifeWrapper(env)
+
+            _, initial_info = env.reset(seed=config.environment.seed)
+            print(f"Initial reset info: {initial_info}")
+            gsm = RiverraidGSM(env)
         else:
             raise ValueError(f"Invalid environment: {config.environment}")
 
@@ -77,7 +136,25 @@ def main():
     muzero = MuZero(config)
 
     # Run training loop
-    muzero.run_training()
+    
+    if config.logging.save_model:
+        muzero.run_training()
+        muzero.save_models()
+
+    if config.logging.load_model:
+        # Load models
+        """muzero.nnm.representation.load_model(
+            config.networks.iteration, "representation_model.pth"
+        )
+        muzero.nnm.dynamics.load_model(
+            config.networks.iteration, "dynamics_model.pth"
+        )
+        muzero.nnm.prediction.load_model(
+            config.networks.iteration, "prediction_model.pth"
+        )"""
+
+        muzero.rlm.play(num_episodes=5, record_folder="./playback_videos")
+
 
 
 if __name__ == "__main__":

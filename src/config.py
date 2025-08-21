@@ -1,58 +1,100 @@
 import yaml
 from pathlib import Path
 from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class LoggingConfig:
+    use_wandb: bool
+    wandb_project: str
+    wandb_name: str
+    load_model: bool
+    save_model: bool
+    checkpoint_interval: int
+    avg_reward_window: int
+
 
 @dataclass
 class NetworkConfig:
-  iteration: int
-  representation: list
-  dynamics: list
-  prediction: list
+    roll_ahead: int
+    iteration: str
+    representation: List[dict]
+    prediction: List[dict]
+    dynamics: List[dict]
+    # Optional for environments like riverraid
+    state_window: Optional[int] = None
+    hidden_state_size: Optional[int] = None
+
 
 @dataclass
 class uMCTSConfig:
-  num_searches: int
-  max_depth: int
-  ucb_constant: float
-  discount_factor: float
+    num_searches: int
+    max_depth: int
+    ucb_constant: float
+    discount_factor: float
+
 
 @dataclass
 class SnakePacConfig:
-  num_episodes: int
-  num_simulations: int
-  I_t: int
-  batch_size: int
-  world_length: int
-  seed: int
-  uMCTS: uMCTSConfig
-  network: NetworkConfig
-  
-class Config():
-  def __init__(self, config_file: str = "config.yaml"):
-    self.__config_data = self.__load_yaml(config_file)
+    num_episodes: int
+    num_episode_step: int
+    training_interval: int
+    buffer_size: int
+    minibatch_size: int
+    world_length: int
+    seed: int
+    action_space: int
+    mcts: uMCTSConfig
+    network: NetworkConfig
     
-    self.environment_name = self.__config_data["environment"]
-    self.logging = self.__config_data["logging"]
-    self.networks = NetworkConfig(**self.__config_data["network"])
-    
-    if self.environment_name == "snakepac":
-      self.environment = SnakePacConfig(**self.__config_data["snakepac"])
-      self.uMCTS = uMCTSConfig(**self.__config_data["snakepac"]["uMCTS"])
-    else: 
-      raise ValueError(f"Invalid environment: {self.environment}") # Change when new environments are added
-    
-  @staticmethod
-  def __load_yaml(config_file: str):
-    """Load the YAML configuration file."""
-    config_path = Path(config_file)
-    if not config_path.exists():
-      raise FileNotFoundError(f"Configuration file '{config_file}' not found.")
-    with open(config_path, "r") as file:
-      return yaml.safe_load(file)
+@dataclass
+class RiverraidConfig:
+    num_episodes: int
+    num_episode_step: int
+    training_interval: int
+    skip_frames: int
+    action_frames: int
+    buffer_size: int
+    minibatch_size: int
+    seed: int
+    action_space: int
+    mcts: uMCTSConfig
+    network: NetworkConfig
+
+
+class Config:
+    def __init__(self, config_file: str = "config.yaml"):
+        self.__config_data = self.__load_yaml(config_file)
+
+        self.environment_name = self.__config_data["environment"]
+        self.logging = LoggingConfig(**self.__config_data["logging_config"])
+
+        if self.environment_name == "snakepac":
+            env_data = self.__config_data["snakepac"]
+            self.environment = SnakePacConfig(**env_data)
+            self.networks =  NetworkConfig(**env_data["network"])
+            self.uMCTS = uMCTSConfig(**env_data["uMCTS"])
+        elif self.environment_name == "riverraid":
+            env_data = self.__config_data["riverraid"]
+            print(env_data)
+            self.environment = RiverraidConfig(**env_data)
+            self.networks =  NetworkConfig(**env_data["network"])
+            self.uMCTS = uMCTSConfig(**env_data["mcts"])
+        else:
+            raise ValueError(f"Invalid environment: {self.environment_name}")
+
+    @staticmethod
+    def __load_yaml(config_file: str):
+        """Load the YAML configuration file."""
+        config_path = Path(config_file)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Configuration file '{config_file}' not found.")
+        with open(config_path, "r") as file:
+            return yaml.safe_load(file)
+
 
 # Example usage:
 if __name__ == "__main__":
     config = Config()
-
-    print("Environment Configuration:", config.environment)
-    print("Training Configuration:", config.training)
+    print("Environment:", config.environment_name)
+    print("Config:", config.environment)
